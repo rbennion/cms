@@ -30,9 +30,9 @@ yarn-error.log*
 # Vercel
 .vercel
 
-# Database (keep for development, but don't commit populated databases)
-# Uncomment the next line in production
-# database.sqlite
+# Database (local development)
+local.db
+database.sqlite
 
 # Uploads (user uploaded files)
 /public/uploads/*
