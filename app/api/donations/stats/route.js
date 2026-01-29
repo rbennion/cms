@@ -1,6 +1,9 @@
 import { NextResponse } from 'next/server'
 import { get, all } from '@/lib/db'
 
+// Prevent static generation during build
+export const dynamic = 'force-dynamic'
+
 export async function GET() {
   try {
     const currentYear = new Date().getFullYear()
@@ -10,21 +13,21 @@ export async function GET() {
     const totalAll = await get('SELECT COALESCE(SUM(amount), 0) as total FROM donations')
 
     // Total donations YTD
-    const totalYtd = await get('SELECT COALESCE(SUM(amount), 0) as total FROM donations WHERE date >= ?', [yearStart])
+    const totalYtd = await get('SELECT COALESCE(SUM(amount), 0) as total FROM donations WHERE date >= $1', [yearStart])
 
     // Donations count
     const countAll = await get('SELECT COUNT(*) as count FROM donations')
-    const countYtd = await get('SELECT COUNT(*) as count FROM donations WHERE date >= ?', [yearStart])
+    const countYtd = await get('SELECT COUNT(*) as count FROM donations WHERE date >= $1', [yearStart])
 
-    // Monthly donations for current year
+    // Monthly donations for current year (PostgreSQL syntax)
     const monthlyDonations = await all(`
       SELECT
-        strftime('%Y-%m', date) as month,
+        TO_CHAR(date, 'YYYY-MM') as month,
         SUM(amount) as total,
         COUNT(*) as count
       FROM donations
-      WHERE date >= ?
-      GROUP BY strftime('%Y-%m', date)
+      WHERE date >= $1
+      GROUP BY TO_CHAR(date, 'YYYY-MM')
       ORDER BY month
     `, [yearStart])
 
@@ -36,7 +39,7 @@ export async function GET() {
         COUNT(d.id) as donation_count
       FROM donations d
       JOIN people p ON d.person_id = p.id
-      GROUP BY p.id
+      GROUP BY p.id, p.first_name, p.last_name
       ORDER BY total_donated DESC
       LIMIT 10
     `)
@@ -49,7 +52,7 @@ export async function GET() {
         COUNT(d.id) as donation_count
       FROM donations d
       JOIN companies c ON d.company_id = c.id
-      GROUP BY c.id
+      GROUP BY c.id, c.name
       ORDER BY total_donated DESC
       LIMIT 10
     `)

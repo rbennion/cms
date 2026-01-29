@@ -1,6 +1,9 @@
 import { NextResponse } from 'next/server'
 import { get, all } from '@/lib/db'
 
+// Prevent static generation during build
+export const dynamic = 'force-dynamic'
+
 export async function GET() {
   try {
     const currentYear = new Date().getFullYear()
