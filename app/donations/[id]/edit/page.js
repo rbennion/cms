@@ -1,56 +1,60 @@
-"use client"
+"use client";
 
-import { useState, useEffect, use, Suspense } from 'react'
-import { useRouter } from 'next/navigation'
-import { Header } from '@/components/layout/header'
-import { DonationForm } from '@/components/donations/donation-form'
-import { Skeleton } from '@/components/ui/skeleton'
-import { useToast } from '@/components/ui/use-toast'
+import { useState, useEffect } from "react";
+import { useRouter, useParams } from "next/navigation";
+import { Header } from "@/components/layout/header";
+import { DonationForm } from "@/components/donations/donation-form";
+import { Skeleton } from "@/components/ui/skeleton";
+import { useToast } from "@/components/ui/use-toast";
 
-function EditDonationContent({ id }) {
-  const router = useRouter()
-  const { toast } = useToast()
-  const [donation, setDonation] = useState(null)
-  const [loading, setLoading] = useState(true)
+export default function EditDonationPage() {
+  const params = useParams();
+  const router = useRouter();
+  const { toast } = useToast();
+  const [donation, setDonation] = useState(null);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetchDonation()
-  }, [id])
+    fetchDonation();
+  }, [params.id]);
 
   const fetchDonation = async () => {
     try {
-      const res = await fetch(`/api/donations/${id}`)
-      if (!res.ok) throw new Error('Donation not found')
-      const data = await res.json()
-      setDonation(data)
+      const res = await fetch(`/api/donations/${params.id}`);
+      if (!res.ok) throw new Error("Donation not found");
+      const data = await res.json();
+      setDonation(data);
     } catch (error) {
-      toast({ title: 'Error', description: error.message, variant: 'destructive' })
-      router.push('/donations')
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+      router.push("/donations");
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  };
 
   if (loading) {
-    return <Skeleton className="h-96 w-full" />
+    return (
+      <div className="flex flex-col">
+        <Header title="Edit Donation" description="Update donation details" />
+        <div className="p-6">
+          <Skeleton className="h-96 w-full" />
+        </div>
+      </div>
+    );
   }
 
-  if (!donation) return null
-
-  return <DonationForm donation={donation} isEdit />
-}
-
-export default function EditDonationPage({ params }) {
-  const resolvedParams = use(params)
+  if (!donation) return null;
 
   return (
     <div className="flex flex-col">
       <Header title="Edit Donation" description="Update donation details" />
       <div className="p-6">
-        <Suspense fallback={<Skeleton className="h-96 w-full" />}>
-          <EditDonationContent id={resolvedParams.id} />
-        </Suspense>
+        <DonationForm donation={donation} isEdit />
       </div>
     </div>
-  )
+  );
 }

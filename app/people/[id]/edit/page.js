@@ -1,36 +1,40 @@
-"use client"
+"use client";
 
-import { useState, useEffect, use } from 'react'
-import { useRouter } from 'next/navigation'
-import { Header } from '@/components/layout/header'
-import { PersonForm } from '@/components/people/person-form'
-import { Skeleton } from '@/components/ui/skeleton'
-import { useToast } from '@/components/ui/use-toast'
+import { useState, useEffect } from "react";
+import { useRouter, useParams } from "next/navigation";
+import { Header } from "@/components/layout/header";
+import { PersonForm } from "@/components/people/person-form";
+import { Skeleton } from "@/components/ui/skeleton";
+import { useToast } from "@/components/ui/use-toast";
 
-export default function EditPersonPage({ params }) {
-  const resolvedParams = use(params)
-  const router = useRouter()
-  const { toast } = useToast()
-  const [person, setPerson] = useState(null)
-  const [loading, setLoading] = useState(true)
+export default function EditPersonPage() {
+  const params = useParams();
+  const router = useRouter();
+  const { toast } = useToast();
+  const [person, setPerson] = useState(null);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetchPerson()
-  }, [resolvedParams.id])
+    fetchPerson();
+  }, [params.id]);
 
   const fetchPerson = async () => {
     try {
-      const res = await fetch(`/api/people/${resolvedParams.id}`)
-      if (!res.ok) throw new Error('Person not found')
-      const data = await res.json()
-      setPerson(data)
+      const res = await fetch(`/api/people/${params.id}`);
+      if (!res.ok) throw new Error("Person not found");
+      const data = await res.json();
+      setPerson(data);
     } catch (error) {
-      toast({ title: 'Error', description: error.message, variant: 'destructive' })
-      router.push('/people')
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+      router.push("/people");
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  };
 
   if (loading) {
     return (
@@ -40,10 +44,10 @@ export default function EditPersonPage({ params }) {
           <Skeleton className="h-96 w-full" />
         </div>
       </div>
-    )
+    );
   }
 
-  if (!person) return null
+  if (!person) return null;
 
   return (
     <div className="flex flex-col">
@@ -55,5 +59,5 @@ export default function EditPersonPage({ params }) {
         <PersonForm person={person} isEdit />
       </div>
     </div>
-  )
+  );
 }

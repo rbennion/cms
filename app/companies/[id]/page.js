@@ -1,18 +1,18 @@
-"use client"
+"use client";
 
-import { useState, useEffect, use } from 'react'
-import Link from 'next/link'
-import { useRouter } from 'next/navigation'
-import { Header } from '@/components/layout/header'
-import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { Skeleton } from '@/components/ui/skeleton'
-import { NotesList } from '@/components/notes/notes-list'
-import { ConfirmDialog } from '@/components/shared/confirm-dialog'
-import { useToast } from '@/components/ui/use-toast'
-import { formatCurrency, formatDate } from '@/lib/utils'
+import { useState, useEffect } from "react";
+import Link from "next/link";
+import { useRouter, useParams } from "next/navigation";
+import { Header } from "@/components/layout/header";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Skeleton } from "@/components/ui/skeleton";
+import { NotesList } from "@/components/notes/notes-list";
+import { ConfirmDialog } from "@/components/shared/confirm-dialog";
+import { useToast } from "@/components/ui/use-toast";
+import { formatCurrency, formatDate } from "@/lib/utils";
 import {
   Pencil,
   Trash2,
@@ -20,45 +20,55 @@ import {
   Globe,
   Users,
   DollarSign,
-  ExternalLink
-} from 'lucide-react'
+  ExternalLink,
+} from "lucide-react";
 
-export default function CompanyDetailPage({ params }) {
-  const resolvedParams = use(params)
-  const router = useRouter()
-  const { toast } = useToast()
-  const [company, setCompany] = useState(null)
-  const [loading, setLoading] = useState(true)
-  const [showDelete, setShowDelete] = useState(false)
+export default function CompanyDetailPage() {
+  const params = useParams();
+  const router = useRouter();
+  const { toast } = useToast();
+  const [company, setCompany] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [showDelete, setShowDelete] = useState(false);
 
   useEffect(() => {
-    fetchCompany()
-  }, [resolvedParams.id])
+    fetchCompany();
+  }, [params.id]);
 
   const fetchCompany = async () => {
     try {
-      const res = await fetch(`/api/companies/${resolvedParams.id}`)
-      if (!res.ok) throw new Error('Company not found')
-      const data = await res.json()
-      setCompany(data)
+      const res = await fetch(`/api/companies/${params.id}`);
+      if (!res.ok) throw new Error("Company not found");
+      const data = await res.json();
+      setCompany(data);
     } catch (error) {
-      toast({ title: 'Error', description: error.message, variant: 'destructive' })
-      router.push('/companies')
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+      router.push("/companies");
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  };
 
   const handleDelete = async () => {
     try {
-      const res = await fetch(`/api/companies/${resolvedParams.id}`, { method: 'DELETE' })
-      if (!res.ok) throw new Error('Failed to delete')
-      toast({ title: 'Company deleted successfully' })
-      router.push('/companies')
+      const res = await fetch(`/api/companies/${params.id}`, {
+        method: "DELETE",
+      });
+      if (!res.ok) throw new Error("Failed to delete");
+      toast({ title: "Company deleted successfully" });
+      router.push("/companies");
     } catch (error) {
-      toast({ title: 'Error', description: error.message, variant: 'destructive' })
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
     }
-  }
+  };
 
   if (loading) {
     return (
@@ -68,10 +78,10 @@ export default function CompanyDetailPage({ params }) {
           <Skeleton className="h-48 w-full" />
         </div>
       </div>
-    )
+    );
   }
 
-  if (!company) return null
+  if (!company) return null;
 
   return (
     <div className="flex flex-col">
@@ -102,7 +112,9 @@ export default function CompanyDetailPage({ params }) {
                 <h2 className="mt-4 text-xl font-semibold">{company.name}</h2>
 
                 {company.is_donor && (
-                  <Badge variant="success" className="mt-2">Donor Organization</Badge>
+                  <Badge variant="success" className="mt-2">
+                    Donor Organization
+                  </Badge>
                 )}
               </div>
 
@@ -116,7 +128,7 @@ export default function CompanyDetailPage({ params }) {
                       rel="noopener noreferrer"
                       className="text-sm hover:underline flex items-center gap-1"
                     >
-                      {company.website.replace(/^https?:\/\//, '')}
+                      {company.website.replace(/^https?:\/\//, "")}
                       <ExternalLink className="h-3 w-3" />
                     </a>
                   </div>
@@ -128,7 +140,9 @@ export default function CompanyDetailPage({ params }) {
                       {company.address && <div>{company.address}</div>}
                       {(company.city || company.state || company.zip) && (
                         <div>
-                          {company.city}{company.city && company.state ? ', ' : ''}{company.state} {company.zip}
+                          {company.city}
+                          {company.city && company.state ? ", " : ""}
+                          {company.state} {company.zip}
                         </div>
                       )}
                     </div>
@@ -161,11 +175,16 @@ export default function CompanyDetailPage({ params }) {
                   </CardHeader>
                   <CardContent>
                     {company.people?.length === 0 ? (
-                      <p className="text-muted-foreground">No people associated</p>
+                      <p className="text-muted-foreground">
+                        No people associated
+                      </p>
                     ) : (
                       <div className="space-y-4">
                         {company.people?.map((person) => (
-                          <div key={person.id} className="flex items-center justify-between">
+                          <div
+                            key={person.id}
+                            className="flex items-center justify-between"
+                          >
                             <div>
                               <Link
                                 href={`/people/${person.id}`}
@@ -174,10 +193,14 @@ export default function CompanyDetailPage({ params }) {
                                 {person.first_name} {person.last_name}
                               </Link>
                               {person.is_primary ? (
-                                <Badge variant="outline" className="ml-2">Primary Contact</Badge>
+                                <Badge variant="outline" className="ml-2">
+                                  Primary Contact
+                                </Badge>
                               ) : null}
                               {person.title && (
-                                <p className="text-sm text-muted-foreground">{person.title}</p>
+                                <p className="text-sm text-muted-foreground">
+                                  {person.title}
+                                </p>
                               )}
                             </div>
                           </div>
@@ -201,11 +224,16 @@ export default function CompanyDetailPage({ params }) {
                     </CardHeader>
                     <CardContent>
                       {company.donations?.length === 0 ? (
-                        <p className="text-muted-foreground">No donations yet</p>
+                        <p className="text-muted-foreground">
+                          No donations yet
+                        </p>
                       ) : (
                         <div className="space-y-4">
                           {company.donations?.map((donation) => (
-                            <div key={donation.id} className="flex items-center justify-between">
+                            <div
+                              key={donation.id}
+                              className="flex items-center justify-between"
+                            >
                               <div>
                                 <p className="text-sm text-muted-foreground">
                                   {formatDate(donation.date)}
@@ -249,5 +277,5 @@ export default function CompanyDetailPage({ params }) {
         onConfirm={handleDelete}
       />
     </div>
-  )
+  );
 }

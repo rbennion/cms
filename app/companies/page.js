@@ -1,14 +1,14 @@
-"use client"
+"use client";
 
-import { useState, useEffect, Suspense } from 'react'
-import Link from 'next/link'
-import { useRouter, useSearchParams } from 'next/navigation'
-import { Header } from '@/components/layout/header'
-import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
-import { SearchInput } from '@/components/shared/search-input'
-import { Pagination } from '@/components/shared/pagination'
-import { ConfirmDialog } from '@/components/shared/confirm-dialog'
+import { useState, useEffect, Suspense } from "react";
+import Link from "next/link";
+import { useRouter, useSearchParams } from "next/navigation";
+import { Header } from "@/components/layout/header";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { SearchInput } from "@/components/shared/search-input";
+import { Pagination } from "@/components/shared/pagination";
+import { ConfirmDialog } from "@/components/shared/confirm-dialog";
 import {
   Table,
   TableBody,
@@ -16,97 +16,122 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from '@/components/ui/table'
+} from "@/components/ui/table";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from '@/components/ui/select'
+} from "@/components/ui/select";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu'
-import { useToast } from '@/components/ui/use-toast'
-import { Plus, MoreHorizontal, Pencil, Trash2, Eye, ExternalLink } from 'lucide-react'
+} from "@/components/ui/dropdown-menu";
+import { useToast } from "@/components/ui/use-toast";
+import {
+  Plus,
+  MoreHorizontal,
+  Pencil,
+  Trash2,
+  Eye,
+  ExternalLink,
+} from "lucide-react";
 
 function CompaniesPageContent() {
-  const router = useRouter()
-  const searchParams = useSearchParams()
-  const { toast } = useToast()
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const { toast } = useToast();
 
-  const [companies, setCompanies] = useState([])
-  const [pagination, setPagination] = useState({ page: 1, totalPages: 1, total: 0 })
-  const [loading, setLoading] = useState(true)
-  const [deleteId, setDeleteId] = useState(null)
+  const [companies, setCompanies] = useState([]);
+  const [pagination, setPagination] = useState({
+    page: 1,
+    totalPages: 1,
+    total: 0,
+  });
+  const [loading, setLoading] = useState(true);
+  const [deleteId, setDeleteId] = useState(null);
 
   const [filters, setFilters] = useState({
-    search: searchParams.get('search') || '',
-    is_donor: searchParams.get('is_donor') || '',
-  })
+    search: searchParams.get("search") || "",
+    is_donor: searchParams.get("is_donor") || "",
+  });
 
   useEffect(() => {
-    fetchCompanies()
-  }, [filters, searchParams])
+    fetchCompanies();
+  }, [filters, searchParams]);
 
   const fetchCompanies = async () => {
-    setLoading(true)
+    setLoading(true);
     try {
-      const page = searchParams.get('page') || 1
+      const page = searchParams.get("page") || 1;
       const params = new URLSearchParams({
         page,
-        limit: '20',
-        ...Object.fromEntries(Object.entries(filters).filter(([, v]) => v))
-      })
+        limit: "20",
+        ...Object.fromEntries(Object.entries(filters).filter(([, v]) => v)),
+      });
 
-      const res = await fetch(`/api/companies?${params}`)
-      const data = await res.json()
-      setCompanies(data.data || [])
-      setPagination(data.pagination || { page: 1, totalPages: 1, total: 0 })
+      const res = await fetch(`/api/companies?${params}`);
+      const data = await res.json();
+      setCompanies(data.data || []);
+      setPagination(data.pagination || { page: 1, totalPages: 1, total: 0 });
     } catch (error) {
-      console.error('Error fetching companies:', error)
-      toast({ title: 'Error', description: 'Failed to fetch companies', variant: 'destructive' })
+      console.error("Error fetching companies:", error);
+      toast({
+        title: "Error",
+        description: "Failed to fetch companies",
+        variant: "destructive",
+      });
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  };
 
   const handleFilterChange = (key, value) => {
-    setFilters(prev => ({ ...prev, [key]: value }))
-    const params = new URLSearchParams(searchParams)
-    if (value) {
-      params.set(key, value)
+    const actualValue = value === "all" ? "" : value;
+    setFilters((prev) => ({ ...prev, [key]: actualValue }));
+    const params = new URLSearchParams(searchParams);
+    if (actualValue) {
+      params.set(key, actualValue);
     } else {
-      params.delete(key)
+      params.delete(key);
     }
-    params.set('page', '1')
-    router.push(`/companies?${params}`)
-  }
+    params.set("page", "1");
+    router.push(`/companies?${params}`);
+  };
 
   const handlePageChange = (page) => {
-    const params = new URLSearchParams(searchParams)
-    params.set('page', page.toString())
-    router.push(`/companies?${params}`)
-  }
+    const params = new URLSearchParams(searchParams);
+    params.set("page", page.toString());
+    router.push(`/companies?${params}`);
+  };
 
   const handleDelete = async () => {
     try {
-      const res = await fetch(`/api/companies/${deleteId}`, { method: 'DELETE' })
-      if (!res.ok) throw new Error('Failed to delete')
-      toast({ title: 'Company deleted successfully' })
-      setDeleteId(null)
-      fetchCompanies()
+      const res = await fetch(`/api/companies/${deleteId}`, {
+        method: "DELETE",
+      });
+      if (!res.ok) throw new Error("Failed to delete");
+      toast({ title: "Company deleted successfully" });
+      setDeleteId(null);
+      fetchCompanies();
     } catch (error) {
-      toast({ title: 'Error', description: error.message, variant: 'destructive' })
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
     }
-  }
+  };
 
   return (
     <div className="flex flex-col">
-      <Header title="Companies" description="Manage organizations and businesses">
+      <Header
+        title="Companies"
+        description="Manage organizations and businesses"
+      >
         <Button asChild>
           <Link href="/companies/new">
             <Plus className="mr-2 h-4 w-4" />
@@ -120,19 +145,19 @@ function CompaniesPageContent() {
           <SearchInput
             placeholder="Search companies..."
             value={filters.search}
-            onChange={(value) => handleFilterChange('search', value)}
+            onChange={(value) => handleFilterChange("search", value)}
             className="w-64"
           />
 
           <Select
-            value={filters.is_donor}
-            onValueChange={(value) => handleFilterChange('is_donor', value)}
+            value={filters.is_donor || "all"}
+            onValueChange={(value) => handleFilterChange("is_donor", value)}
           >
             <SelectTrigger className="w-36">
               <SelectValue placeholder="Donor Status" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="">All</SelectItem>
+              <SelectItem value="all">All</SelectItem>
               <SelectItem value="true">Donors</SelectItem>
               <SelectItem value="false">Non-donors</SelectItem>
             </SelectContent>
@@ -159,7 +184,10 @@ function CompaniesPageContent() {
                 </TableRow>
               ) : companies.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={5} className="text-center py-8 text-muted-foreground">
+                  <TableCell
+                    colSpan={5}
+                    className="text-center py-8 text-muted-foreground"
+                  >
                     No companies found
                   </TableCell>
                 </TableRow>
@@ -177,7 +205,7 @@ function CompaniesPageContent() {
                     <TableCell>
                       {company.city && company.state
                         ? `${company.city}, ${company.state}`
-                        : company.city || company.state || '-'}
+                        : company.city || company.state || "-"}
                     </TableCell>
                     <TableCell>
                       {company.website ? (
@@ -190,10 +218,14 @@ function CompaniesPageContent() {
                           Visit
                           <ExternalLink className="h-3 w-3" />
                         </a>
-                      ) : '-'}
+                      ) : (
+                        "-"
+                      )}
                     </TableCell>
                     <TableCell>
-                      {company.is_donor ? <Badge variant="success">Donor</Badge> : null}
+                      {company.is_donor ? (
+                        <Badge variant="success">Donor</Badge>
+                      ) : null}
                     </TableCell>
                     <TableCell>
                       <DropdownMenu>
@@ -249,7 +281,7 @@ function CompaniesPageContent() {
         onConfirm={handleDelete}
       />
     </div>
-  )
+  );
 }
 
 export default function CompaniesPage() {
@@ -257,5 +289,5 @@ export default function CompaniesPage() {
     <Suspense fallback={<div className="p-6">Loading...</div>}>
       <CompaniesPageContent />
     </Suspense>
-  )
+  );
 }

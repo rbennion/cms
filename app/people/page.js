@@ -1,14 +1,14 @@
-"use client"
+"use client";
 
-import { useState, useEffect, Suspense } from 'react'
-import Link from 'next/link'
-import { useRouter, useSearchParams } from 'next/navigation'
-import { Header } from '@/components/layout/header'
-import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
-import { SearchInput } from '@/components/shared/search-input'
-import { Pagination } from '@/components/shared/pagination'
-import { ConfirmDialog } from '@/components/shared/confirm-dialog'
+import { useState, useEffect, Suspense } from "react";
+import Link from "next/link";
+import { useRouter, useSearchParams } from "next/navigation";
+import { Header } from "@/components/layout/header";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { SearchInput } from "@/components/shared/search-input";
+import { Pagination } from "@/components/shared/pagination";
+import { ConfirmDialog } from "@/components/shared/confirm-dialog";
 import {
   Table,
   TableBody,
@@ -16,116 +16,129 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from '@/components/ui/table'
+} from "@/components/ui/table";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from '@/components/ui/select'
+} from "@/components/ui/select";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu'
-import { useToast } from '@/components/ui/use-toast'
-import { Plus, MoreHorizontal, Pencil, Trash2, Eye } from 'lucide-react'
+} from "@/components/ui/dropdown-menu";
+import { useToast } from "@/components/ui/use-toast";
+import { Plus, MoreHorizontal, Pencil, Trash2, Eye } from "lucide-react";
 
 function PeoplePageContent() {
-  const router = useRouter()
-  const searchParams = useSearchParams()
-  const { toast } = useToast()
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const { toast } = useToast();
 
-  const [people, setPeople] = useState([])
-  const [pagination, setPagination] = useState({ page: 1, totalPages: 1, total: 0 })
-  const [loading, setLoading] = useState(true)
-  const [personTypes, setPersonTypes] = useState([])
-  const [schools, setSchools] = useState([])
-  const [deleteId, setDeleteId] = useState(null)
+  const [people, setPeople] = useState([]);
+  const [pagination, setPagination] = useState({
+    page: 1,
+    totalPages: 1,
+    total: 0,
+  });
+  const [loading, setLoading] = useState(true);
+  const [personTypes, setPersonTypes] = useState([]);
+  const [schools, setSchools] = useState([]);
+  const [deleteId, setDeleteId] = useState(null);
 
   const [filters, setFilters] = useState({
-    search: searchParams.get('search') || '',
-    type: searchParams.get('type') || '',
-    is_donor: searchParams.get('is_donor') || '',
-    is_fc_certified: searchParams.get('is_fc_certified') || '',
-    is_board_member: searchParams.get('is_board_member') || '',
-    school_id: searchParams.get('school_id') || '',
-  })
+    search: searchParams.get("search") || "",
+    type: searchParams.get("type") || "",
+    is_donor: searchParams.get("is_donor") || "",
+    is_fc_certified: searchParams.get("is_fc_certified") || "",
+    is_board_member: searchParams.get("is_board_member") || "",
+    school_id: searchParams.get("school_id") || "",
+  });
 
   useEffect(() => {
-    fetchOptions()
-  }, [])
+    fetchOptions();
+  }, []);
 
   useEffect(() => {
-    fetchPeople()
-  }, [filters, searchParams])
+    fetchPeople();
+  }, [filters, searchParams]);
 
   const fetchOptions = async () => {
     try {
       const [typesRes, schoolsRes] = await Promise.all([
-        fetch('/api/person-types'),
-        fetch('/api/schools')
-      ])
-      setPersonTypes(await typesRes.json())
-      setSchools(await schoolsRes.json())
+        fetch("/api/person-types"),
+        fetch("/api/schools"),
+      ]);
+      setPersonTypes(await typesRes.json());
+      setSchools(await schoolsRes.json());
     } catch (error) {
-      console.error('Error fetching options:', error)
+      console.error("Error fetching options:", error);
     }
-  }
+  };
 
   const fetchPeople = async () => {
-    setLoading(true)
+    setLoading(true);
     try {
-      const page = searchParams.get('page') || 1
+      const page = searchParams.get("page") || 1;
       const params = new URLSearchParams({
         page,
-        limit: '20',
-        ...Object.fromEntries(Object.entries(filters).filter(([, v]) => v))
-      })
+        limit: "20",
+        ...Object.fromEntries(Object.entries(filters).filter(([, v]) => v)),
+      });
 
-      const res = await fetch(`/api/people?${params}`)
-      const data = await res.json()
-      setPeople(data.data || [])
-      setPagination(data.pagination || { page: 1, totalPages: 1, total: 0 })
+      const res = await fetch(`/api/people?${params}`);
+      const data = await res.json();
+      setPeople(data.data || []);
+      setPagination(data.pagination || { page: 1, totalPages: 1, total: 0 });
     } catch (error) {
-      console.error('Error fetching people:', error)
-      toast({ title: 'Error', description: 'Failed to fetch people', variant: 'destructive' })
+      console.error("Error fetching people:", error);
+      toast({
+        title: "Error",
+        description: "Failed to fetch people",
+        variant: "destructive",
+      });
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  };
 
   const handleFilterChange = (key, value) => {
-    setFilters(prev => ({ ...prev, [key]: value }))
-    const params = new URLSearchParams(searchParams)
-    if (value) {
-      params.set(key, value)
+    const actualValue = value === "all" ? "" : value;
+    setFilters((prev) => ({ ...prev, [key]: actualValue }));
+    const params = new URLSearchParams(searchParams);
+    if (actualValue) {
+      params.set(key, actualValue);
     } else {
-      params.delete(key)
+      params.delete(key);
     }
-    params.set('page', '1')
-    router.push(`/people?${params}`)
-  }
+    params.set("page", "1");
+    router.push(`/people?${params}`);
+  };
 
   const handlePageChange = (page) => {
-    const params = new URLSearchParams(searchParams)
-    params.set('page', page.toString())
-    router.push(`/people?${params}`)
-  }
+    const params = new URLSearchParams(searchParams);
+    params.set("page", page.toString());
+    router.push(`/people?${params}`);
+  };
 
   const handleDelete = async () => {
     try {
-      const res = await fetch(`/api/people/${deleteId}`, { method: 'DELETE' })
-      if (!res.ok) throw new Error('Failed to delete')
-      toast({ title: 'Person deleted successfully' })
-      setDeleteId(null)
-      fetchPeople()
+      const res = await fetch(`/api/people/${deleteId}`, { method: "DELETE" });
+      if (!res.ok) throw new Error("Failed to delete");
+      toast({ title: "Person deleted successfully" });
+      setDeleteId(null);
+      fetchPeople();
     } catch (error) {
-      toast({ title: 'Error', description: error.message, variant: 'destructive' })
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
     }
-  }
+  };
 
   return (
     <div className="flex flex-col">
@@ -143,64 +156,70 @@ function PeoplePageContent() {
           <SearchInput
             placeholder="Search people..."
             value={filters.search}
-            onChange={(value) => handleFilterChange('search', value)}
+            onChange={(value) => handleFilterChange("search", value)}
             className="w-64"
           />
 
           <Select
-            value={filters.type}
-            onValueChange={(value) => handleFilterChange('type', value)}
+            value={filters.type || "all"}
+            onValueChange={(value) => handleFilterChange("type", value)}
           >
             <SelectTrigger className="w-40">
               <SelectValue placeholder="Type" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="">All Types</SelectItem>
-              {personTypes.map(type => (
-                <SelectItem key={type.id} value={type.id.toString()}>{type.name}</SelectItem>
+              <SelectItem value="all">All Types</SelectItem>
+              {personTypes.map((type) => (
+                <SelectItem key={type.id} value={type.id.toString()}>
+                  {type.name}
+                </SelectItem>
               ))}
             </SelectContent>
           </Select>
 
           <Select
-            value={filters.is_donor}
-            onValueChange={(value) => handleFilterChange('is_donor', value)}
+            value={filters.is_donor || "all"}
+            onValueChange={(value) => handleFilterChange("is_donor", value)}
           >
             <SelectTrigger className="w-32">
               <SelectValue placeholder="Donor" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="">All</SelectItem>
+              <SelectItem value="all">All</SelectItem>
               <SelectItem value="true">Donors</SelectItem>
               <SelectItem value="false">Non-donors</SelectItem>
             </SelectContent>
           </Select>
 
           <Select
-            value={filters.is_fc_certified}
-            onValueChange={(value) => handleFilterChange('is_fc_certified', value)}
+            value={filters.is_fc_certified || "all"}
+            onValueChange={(value) =>
+              handleFilterChange("is_fc_certified", value)
+            }
           >
             <SelectTrigger className="w-36">
               <SelectValue placeholder="Certified" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="">All</SelectItem>
+              <SelectItem value="all">All</SelectItem>
               <SelectItem value="true">Certified</SelectItem>
               <SelectItem value="false">Not Certified</SelectItem>
             </SelectContent>
           </Select>
 
           <Select
-            value={filters.school_id}
-            onValueChange={(value) => handleFilterChange('school_id', value)}
+            value={filters.school_id || "all"}
+            onValueChange={(value) => handleFilterChange("school_id", value)}
           >
             <SelectTrigger className="w-48">
               <SelectValue placeholder="School" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="">All Schools</SelectItem>
-              {schools.map(school => (
-                <SelectItem key={school.id} value={school.id.toString()}>{school.name}</SelectItem>
+              <SelectItem value="all">All Schools</SelectItem>
+              {schools.map((school) => (
+                <SelectItem key={school.id} value={school.id.toString()}>
+                  {school.name}
+                </SelectItem>
               ))}
             </SelectContent>
           </Select>
@@ -227,7 +246,10 @@ function PeoplePageContent() {
                 </TableRow>
               ) : people.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
+                  <TableCell
+                    colSpan={6}
+                    className="text-center py-8 text-muted-foreground"
+                  >
                     No people found
                   </TableCell>
                 </TableRow>
@@ -242,7 +264,9 @@ function PeoplePageContent() {
                         {person.first_name} {person.last_name}
                       </Link>
                       {person.title && (
-                        <p className="text-sm text-muted-foreground">{person.title}</p>
+                        <p className="text-sm text-muted-foreground">
+                          {person.title}
+                        </p>
                       )}
                     </TableCell>
                     <TableCell>{person.email}</TableCell>
@@ -250,16 +274,22 @@ function PeoplePageContent() {
                     <TableCell>
                       {person.types && (
                         <div className="flex flex-wrap gap-1">
-                          {person.types.split(',').map((type, i) => (
-                            <Badge key={i} variant="secondary">{type}</Badge>
+                          {person.types.split(",").map((type, i) => (
+                            <Badge key={i} variant="secondary">
+                              {type}
+                            </Badge>
                           ))}
                         </div>
                       )}
                     </TableCell>
                     <TableCell>
                       <div className="flex flex-wrap gap-1">
-                        {person.is_donor ? <Badge variant="success">Donor</Badge> : null}
-                        {person.is_fc_certified ? <Badge variant="info">Certified</Badge> : null}
+                        {person.is_donor ? (
+                          <Badge variant="success">Donor</Badge>
+                        ) : null}
+                        {person.is_fc_certified ? (
+                          <Badge variant="info">Certified</Badge>
+                        ) : null}
                         {person.is_board_member ? <Badge>Board</Badge> : null}
                       </div>
                     </TableCell>
@@ -317,7 +347,7 @@ function PeoplePageContent() {
         onConfirm={handleDelete}
       />
     </div>
-  )
+  );
 }
 
 export default function PeoplePage() {
@@ -325,5 +355,5 @@ export default function PeoplePage() {
     <Suspense fallback={<div className="p-6">Loading...</div>}>
       <PeoplePageContent />
     </Suspense>
-  )
+  );
 }

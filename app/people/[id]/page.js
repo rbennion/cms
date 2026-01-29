@@ -1,19 +1,19 @@
-"use client"
+"use client";
 
-import { useState, useEffect, use } from 'react'
-import Link from 'next/link'
-import { useRouter } from 'next/navigation'
-import { Header } from '@/components/layout/header'
-import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
-import { Skeleton } from '@/components/ui/skeleton'
-import { NotesList } from '@/components/notes/notes-list'
-import { ConfirmDialog } from '@/components/shared/confirm-dialog'
-import { useToast } from '@/components/ui/use-toast'
-import { formatCurrency, formatDate } from '@/lib/utils'
+import { useState, useEffect } from "react";
+import Link from "next/link";
+import { useRouter, useParams } from "next/navigation";
+import { Header } from "@/components/layout/header";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Skeleton } from "@/components/ui/skeleton";
+import { NotesList } from "@/components/notes/notes-list";
+import { ConfirmDialog } from "@/components/shared/confirm-dialog";
+import { useToast } from "@/components/ui/use-toast";
+import { formatCurrency, formatDate } from "@/lib/utils";
 import {
   Pencil,
   Trash2,
@@ -23,45 +23,53 @@ import {
   Building2,
   GraduationCap,
   DollarSign,
-  Award
-} from 'lucide-react'
+  Award,
+} from "lucide-react";
 
-export default function PersonDetailPage({ params }) {
-  const resolvedParams = use(params)
-  const router = useRouter()
-  const { toast } = useToast()
-  const [person, setPerson] = useState(null)
-  const [loading, setLoading] = useState(true)
-  const [showDelete, setShowDelete] = useState(false)
+export default function PersonDetailPage() {
+  const params = useParams();
+  const router = useRouter();
+  const { toast } = useToast();
+  const [person, setPerson] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [showDelete, setShowDelete] = useState(false);
 
   useEffect(() => {
-    fetchPerson()
-  }, [resolvedParams.id])
+    fetchPerson();
+  }, [params.id]);
 
   const fetchPerson = async () => {
     try {
-      const res = await fetch(`/api/people/${resolvedParams.id}`)
-      if (!res.ok) throw new Error('Person not found')
-      const data = await res.json()
-      setPerson(data)
+      const res = await fetch(`/api/people/${params.id}`);
+      if (!res.ok) throw new Error("Person not found");
+      const data = await res.json();
+      setPerson(data);
     } catch (error) {
-      toast({ title: 'Error', description: error.message, variant: 'destructive' })
-      router.push('/people')
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+      router.push("/people");
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  };
 
   const handleDelete = async () => {
     try {
-      const res = await fetch(`/api/people/${resolvedParams.id}`, { method: 'DELETE' })
-      if (!res.ok) throw new Error('Failed to delete')
-      toast({ title: 'Person deleted successfully' })
-      router.push('/people')
+      const res = await fetch(`/api/people/${params.id}`, { method: "DELETE" });
+      if (!res.ok) throw new Error("Failed to delete");
+      toast({ title: "Person deleted successfully" });
+      router.push("/people");
     } catch (error) {
-      toast({ title: 'Error', description: error.message, variant: 'destructive' })
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
     }
-  }
+  };
 
   if (loading) {
     return (
@@ -71,12 +79,13 @@ export default function PersonDetailPage({ params }) {
           <Skeleton className="h-48 w-full" />
         </div>
       </div>
-    )
+    );
   }
 
-  if (!person) return null
+  if (!person) return null;
 
-  const initials = `${person.first_name[0]}${person.last_name[0]}`.toUpperCase()
+  const initials =
+    `${person.first_name[0]}${person.last_name[0]}`.toUpperCase();
 
   return (
     <div className="flex flex-col">
@@ -104,7 +113,9 @@ export default function PersonDetailPage({ params }) {
               <div className="flex flex-col items-center text-center">
                 <Avatar className="h-24 w-24">
                   <AvatarImage src={person.picture_path} />
-                  <AvatarFallback className="text-2xl">{initials}</AvatarFallback>
+                  <AvatarFallback className="text-2xl">
+                    {initials}
+                  </AvatarFallback>
                 </Avatar>
                 <h2 className="mt-4 text-xl font-semibold">
                   {person.first_name} {person.middle_name} {person.last_name}
@@ -114,15 +125,21 @@ export default function PersonDetailPage({ params }) {
                 )}
 
                 <div className="mt-4 flex flex-wrap justify-center gap-2">
-                  {person.is_donor ? <Badge variant="success">Donor</Badge> : null}
-                  {person.is_fc_certified ? <Badge variant="info">FC Certified</Badge> : null}
+                  {person.is_donor ? (
+                    <Badge variant="success">Donor</Badge>
+                  ) : null}
+                  {person.is_fc_certified ? (
+                    <Badge variant="info">FC Certified</Badge>
+                  ) : null}
                   {person.is_board_member ? <Badge>Board Member</Badge> : null}
                 </div>
 
                 {person.types?.length > 0 && (
                   <div className="mt-4 flex flex-wrap justify-center gap-2">
                     {person.types.map((type) => (
-                      <Badge key={type.id} variant="secondary">{type.name}</Badge>
+                      <Badge key={type.id} variant="secondary">
+                        {type.name}
+                      </Badge>
                     ))}
                   </div>
                 )}
@@ -132,7 +149,10 @@ export default function PersonDetailPage({ params }) {
                 {person.email && (
                   <div className="flex items-center gap-3">
                     <Mail className="h-4 w-4 text-muted-foreground" />
-                    <a href={`mailto:${person.email}`} className="text-sm hover:underline">
+                    <a
+                      href={`mailto:${person.email}`}
+                      className="text-sm hover:underline"
+                    >
                       {person.email}
                     </a>
                   </div>
@@ -140,7 +160,10 @@ export default function PersonDetailPage({ params }) {
                 {person.phone && (
                   <div className="flex items-center gap-3">
                     <Phone className="h-4 w-4 text-muted-foreground" />
-                    <a href={`tel:${person.phone}`} className="text-sm hover:underline">
+                    <a
+                      href={`tel:${person.phone}`}
+                      className="text-sm hover:underline"
+                    >
                       {person.phone}
                     </a>
                   </div>
@@ -152,7 +175,9 @@ export default function PersonDetailPage({ params }) {
                       {person.address && <div>{person.address}</div>}
                       {(person.city || person.state || person.zip) && (
                         <div>
-                          {person.city}{person.city && person.state ? ', ' : ''}{person.state} {person.zip}
+                          {person.city}
+                          {person.city && person.state ? ", " : ""}
+                          {person.state} {person.zip}
                         </div>
                       )}
                     </div>
@@ -163,7 +188,9 @@ export default function PersonDetailPage({ params }) {
               {person.children && (
                 <div className="mt-6">
                   <h4 className="text-sm font-medium mb-2">Children</h4>
-                  <p className="text-sm text-muted-foreground">{person.children}</p>
+                  <p className="text-sm text-muted-foreground">
+                    {person.children}
+                  </p>
                 </div>
               )}
             </CardContent>
@@ -202,11 +229,16 @@ export default function PersonDetailPage({ params }) {
                   </CardHeader>
                   <CardContent>
                     {person.companies?.length === 0 ? (
-                      <p className="text-muted-foreground">No companies associated</p>
+                      <p className="text-muted-foreground">
+                        No companies associated
+                      </p>
                     ) : (
                       <div className="space-y-4">
                         {person.companies?.map((company) => (
-                          <div key={company.id} className="flex items-center justify-between">
+                          <div
+                            key={company.id}
+                            className="flex items-center justify-between"
+                          >
                             <div>
                               <Link
                                 href={`/companies/${company.id}`}
@@ -215,7 +247,9 @@ export default function PersonDetailPage({ params }) {
                                 {company.name}
                               </Link>
                               {company.is_primary ? (
-                                <Badge variant="outline" className="ml-2">Primary</Badge>
+                                <Badge variant="outline" className="ml-2">
+                                  Primary
+                                </Badge>
                               ) : null}
                             </div>
                           </div>
@@ -233,7 +267,9 @@ export default function PersonDetailPage({ params }) {
                   </CardHeader>
                   <CardContent>
                     {person.schools?.length === 0 ? (
-                      <p className="text-muted-foreground">No schools associated</p>
+                      <p className="text-muted-foreground">
+                        No schools associated
+                      </p>
                     ) : (
                       <div className="space-y-4">
                         {person.schools?.map((school) => (
@@ -265,11 +301,16 @@ export default function PersonDetailPage({ params }) {
                     </CardHeader>
                     <CardContent>
                       {person.donations?.length === 0 ? (
-                        <p className="text-muted-foreground">No donations yet</p>
+                        <p className="text-muted-foreground">
+                          No donations yet
+                        </p>
                       ) : (
                         <div className="space-y-4">
                           {person.donations?.map((donation) => (
-                            <div key={donation.id} className="flex items-center justify-between">
+                            <div
+                              key={donation.id}
+                              className="flex items-center justify-between"
+                            >
                               <div>
                                 <p className="text-sm text-muted-foreground">
                                   {formatDate(donation.date)}
@@ -303,30 +344,55 @@ export default function PersonDetailPage({ params }) {
                             <span>Background Check</span>
                             <Badge
                               variant={
-                                person.certification.background_check_status === 'approved' ? 'success' :
-                                person.certification.background_check_status === 'pending' ? 'warning' :
-                                person.certification.background_check_status === 'denied' ? 'destructive' :
-                                'secondary'
+                                person.certification.background_check_status ===
+                                "approved"
+                                  ? "success"
+                                  : person.certification
+                                        .background_check_status === "pending"
+                                    ? "warning"
+                                    : person.certification
+                                          .background_check_status === "denied"
+                                      ? "destructive"
+                                      : "secondary"
                               }
                             >
-                              {person.certification.background_check_status || 'Not Started'}
+                              {person.certification.background_check_status ||
+                                "Not Started"}
                             </Badge>
                           </div>
                           <div className="flex items-center justify-between">
                             <span>Application Received</span>
-                            <Badge variant={person.certification.application_received ? 'success' : 'secondary'}>
-                              {person.certification.application_received ? 'Yes' : 'No'}
+                            <Badge
+                              variant={
+                                person.certification.application_received
+                                  ? "success"
+                                  : "secondary"
+                              }
+                            >
+                              {person.certification.application_received
+                                ? "Yes"
+                                : "No"}
                             </Badge>
                           </div>
                           <div className="flex items-center justify-between">
                             <span>Training Complete</span>
-                            <Badge variant={person.certification.training_complete ? 'success' : 'secondary'}>
-                              {person.certification.training_complete ? 'Yes' : 'No'}
+                            <Badge
+                              variant={
+                                person.certification.training_complete
+                                  ? "success"
+                                  : "secondary"
+                              }
+                            >
+                              {person.certification.training_complete
+                                ? "Yes"
+                                : "No"}
                             </Badge>
                           </div>
                         </div>
                       ) : (
-                        <p className="text-muted-foreground">No certification record</p>
+                        <p className="text-muted-foreground">
+                          No certification record
+                        </p>
                       )}
                     </CardContent>
                   </Card>
@@ -356,5 +422,5 @@ export default function PersonDetailPage({ params }) {
         onConfirm={handleDelete}
       />
     </div>
-  )
+  );
 }
