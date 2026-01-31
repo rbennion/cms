@@ -38,7 +38,11 @@ import {
   Trash2,
   Eye,
   ExternalLink,
+  Upload,
 } from "lucide-react";
+import { ImportDialog } from "@/components/shared/import-dialog";
+import { ExportButton } from "@/components/shared/export-button";
+import { SavedViewsDropdown } from "@/components/shared/saved-views-dropdown";
 
 function CompaniesPageContent() {
   const router = useRouter();
@@ -53,6 +57,7 @@ function CompaniesPageContent() {
   });
   const [loading, setLoading] = useState(true);
   const [deleteId, setDeleteId] = useState(null);
+  const [showImportDialog, setShowImportDialog] = useState(false);
 
   const [filters, setFilters] = useState({
     search: searchParams.get("search") || "",
@@ -102,6 +107,16 @@ function CompaniesPageContent() {
     router.push(`/companies?${params}`);
   };
 
+  const handleApplyView = (filterState) => {
+    setFilters(filterState);
+    const params = new URLSearchParams();
+    Object.entries(filterState).forEach(([key, value]) => {
+      if (value) params.set(key, value);
+    });
+    params.set("page", "1");
+    router.push(`/companies?${params}`);
+  };
+
   const handlePageChange = (page) => {
     const params = new URLSearchParams(searchParams);
     params.set("page", page.toString());
@@ -132,16 +147,28 @@ function CompaniesPageContent() {
         title="Companies"
         description="Manage organizations and businesses"
       >
-        <Button asChild>
-          <Link href="/companies/new">
-            <Plus className="mr-2 h-4 w-4" />
-            Add Company
-          </Link>
-        </Button>
+        <div className="flex gap-2">
+          <ExportButton entityType="companies" filters={filters} />
+          <Button variant="outline" onClick={() => setShowImportDialog(true)}>
+            <Upload className="mr-2 h-4 w-4" />
+            Import
+          </Button>
+          <Button asChild>
+            <Link href="/companies/new">
+              <Plus className="mr-2 h-4 w-4" />
+              Add Company
+            </Link>
+          </Button>
+        </div>
       </Header>
 
       <div className="p-6">
-        <div className="mb-6 flex flex-wrap gap-4">
+        <div className="mb-6 flex flex-wrap items-center gap-4">
+          <SavedViewsDropdown
+            entityType="companies"
+            currentFilters={filters}
+            onApplyView={handleApplyView}
+          />
           <SearchInput
             placeholder="Search companies..."
             value={filters.search}
@@ -279,6 +306,13 @@ function CompaniesPageContent() {
         description="Are you sure you want to delete this company? This action cannot be undone."
         confirmText="Delete"
         onConfirm={handleDelete}
+      />
+
+      <ImportDialog
+        open={showImportDialog}
+        onOpenChange={setShowImportDialog}
+        entityType="companies"
+        onSuccess={fetchCompanies}
       />
     </div>
   );

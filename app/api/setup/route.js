@@ -15,6 +15,10 @@ export async function GET(request) {
     // If reset=true, drop all tables first
     if (reset) {
       console.log("Dropping all tables...");
+      await sql`DROP TABLE IF EXISTS saved_views CASCADE`;
+      await sql`DROP TABLE IF EXISTS user_permissions CASCADE`;
+      await sql`DROP TABLE IF EXISTS password_reset_tokens CASCADE`;
+      await sql`DROP TABLE IF EXISTS users CASCADE`;
       await sql`DROP TABLE IF EXISTS notes CASCADE`;
       await sql`DROP TABLE IF EXISTS certifications CASCADE`;
       await sql`DROP TABLE IF EXISTS donations CASCADE`;
@@ -154,7 +158,63 @@ export async function GET(request) {
       )
     `;
 
+    // Create users table for authentication
+    await sql`
+      CREATE TABLE IF NOT EXISTS users (
+        id SERIAL PRIMARY KEY,
+        email TEXT NOT NULL UNIQUE,
+        password_hash TEXT NOT NULL,
+        name TEXT NOT NULL,
+        is_active BOOLEAN DEFAULT FALSE,
+        is_admin BOOLEAN DEFAULT FALSE,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `;
+
+    // Create password reset tokens table
+    await sql`
+      CREATE TABLE IF NOT EXISTS password_reset_tokens (
+        id SERIAL PRIMARY KEY,
+        user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        token TEXT NOT NULL UNIQUE,
+        expires_at TIMESTAMP NOT NULL,
+        used BOOLEAN DEFAULT FALSE,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `;
+
+    // Create user permissions table
+    await sql`
+      CREATE TABLE IF NOT EXISTS user_permissions (
+        id SERIAL PRIMARY KEY,
+        user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        entity_type TEXT NOT NULL CHECK(entity_type IN ('people', 'companies', 'donations', 'certifications', 'notes', 'schools')),
+        can_create BOOLEAN DEFAULT FALSE,
+        can_read BOOLEAN DEFAULT TRUE,
+        can_update BOOLEAN DEFAULT FALSE,
+        can_delete BOOLEAN DEFAULT FALSE,
+        UNIQUE(user_id, entity_type)
+      )
+    `;
+
+    // Create saved_views table
+    await sql`
+      CREATE TABLE IF NOT EXISTS saved_views (
+        id SERIAL PRIMARY KEY,
+        user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        name TEXT NOT NULL,
+        entity_type TEXT NOT NULL CHECK(entity_type IN ('people', 'companies', 'schools', 'donations')),
+        filter_state JSONB NOT NULL DEFAULT '{}',
+        is_shared BOOLEAN DEFAULT FALSE,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `;
+
     // Create indexes
+    await sql`CREATE INDEX IF NOT EXISTS idx_users_email ON users(email)`;
+    await sql`CREATE INDEX IF NOT EXISTS idx_saved_views_user ON saved_views(user_id)`;
     await sql`CREATE INDEX IF NOT EXISTS idx_people_email ON people(email)`;
     await sql`CREATE INDEX IF NOT EXISTS idx_people_last_name ON people(last_name)`;
     await sql`CREATE INDEX IF NOT EXISTS idx_companies_name ON companies(name)`;

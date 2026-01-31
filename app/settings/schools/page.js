@@ -23,7 +23,11 @@ import {
 } from '@/components/ui/dialog'
 import { ConfirmDialog } from '@/components/shared/confirm-dialog'
 import { useToast } from '@/components/ui/use-toast'
-import { Plus, Pencil, Trash2 } from 'lucide-react'
+import { Plus, Pencil, Trash2, Upload } from 'lucide-react'
+import { ImportDialog } from '@/components/shared/import-dialog'
+import { ExportButton } from '@/components/shared/export-button'
+import { SavedViewsDropdown } from '@/components/shared/saved-views-dropdown'
+import { SearchInput } from '@/components/shared/search-input'
 
 export default function SchoolsSettingsPage() {
   const { toast } = useToast()
@@ -32,6 +36,8 @@ export default function SchoolsSettingsPage() {
   const [showForm, setShowForm] = useState(false)
   const [editSchool, setEditSchool] = useState(null)
   const [deleteId, setDeleteId] = useState(null)
+  const [showImportDialog, setShowImportDialog] = useState(false)
+  const [filters, setFilters] = useState({ search: '' })
   const [formData, setFormData] = useState({
     name: '',
     address: '',
@@ -42,11 +48,14 @@ export default function SchoolsSettingsPage() {
 
   useEffect(() => {
     fetchSchools()
-  }, [])
+  }, [filters])
 
   const fetchSchools = async () => {
+    setLoading(true)
     try {
-      const res = await fetch('/api/schools')
+      const params = new URLSearchParams()
+      if (filters.search) params.set('search', filters.search)
+      const res = await fetch(`/api/schools?${params}`)
       const data = await res.json()
       setSchools(data)
     } catch (error) {
@@ -54,6 +63,14 @@ export default function SchoolsSettingsPage() {
     } finally {
       setLoading(false)
     }
+  }
+
+  const handleFilterChange = (key, value) => {
+    setFilters(prev => ({ ...prev, [key]: value }))
+  }
+
+  const handleApplyView = (filterState) => {
+    setFilters(filterState)
   }
 
   const handleSubmit = async (e) => {
@@ -111,13 +128,34 @@ export default function SchoolsSettingsPage() {
   return (
     <div className="flex flex-col">
       <Header title="Schools" description="Manage schools">
-        <Button onClick={() => setShowForm(true)}>
-          <Plus className="mr-2 h-4 w-4" />
-          Add School
-        </Button>
+        <div className="flex gap-2">
+          <ExportButton entityType="schools" filters={filters} />
+          <Button variant="outline" onClick={() => setShowImportDialog(true)}>
+            <Upload className="mr-2 h-4 w-4" />
+            Import
+          </Button>
+          <Button onClick={() => setShowForm(true)}>
+            <Plus className="mr-2 h-4 w-4" />
+            Add School
+          </Button>
+        </div>
       </Header>
 
       <div className="p-6">
+        <div className="mb-6 flex flex-wrap items-center gap-4">
+          <SavedViewsDropdown
+            entityType="schools"
+            currentFilters={filters}
+            onApplyView={handleApplyView}
+          />
+          <SearchInput
+            placeholder="Search schools..."
+            value={filters.search}
+            onChange={(value) => handleFilterChange('search', value)}
+            className="w-64"
+          />
+        </div>
+
         <Card>
           <CardHeader>
             <CardTitle>All Schools</CardTitle>
@@ -253,6 +291,13 @@ export default function SchoolsSettingsPage() {
         description="Are you sure you want to delete this school? This action cannot be undone."
         confirmText="Delete"
         onConfirm={handleDelete}
+      />
+
+      <ImportDialog
+        open={showImportDialog}
+        onOpenChange={setShowImportDialog}
+        entityType="schools"
+        onSuccess={fetchSchools}
       />
     </div>
   )

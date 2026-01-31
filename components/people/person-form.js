@@ -9,6 +9,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { useToast } from '@/components/ui/use-toast'
+import { MultiSelectSearch } from '@/components/ui/multi-select-search'
 
 export function PersonForm({ person, isEdit = false }) {
   const router = useRouter()
@@ -33,10 +34,11 @@ export function PersonForm({ person, isEdit = false }) {
     is_fc_certified: person?.is_fc_certified || false,
     is_board_member: person?.is_board_member || false,
     children: person?.children || '',
-    company_ids: person?.companies?.map(c => c.id) || [],
     type_ids: person?.types?.map(t => t.id) || [],
-    school_ids: person?.schools?.map(s => s.id) || [],
   })
+
+  const [selectedCompanies, setSelectedCompanies] = useState(person?.companies || [])
+  const [selectedSchools, setSelectedSchools] = useState(person?.schools || [])
 
   useEffect(() => {
     fetchOptions()
@@ -46,14 +48,14 @@ export function PersonForm({ person, isEdit = false }) {
     try {
       const [schoolsRes, companiesRes, typesRes] = await Promise.all([
         fetch('/api/schools'),
-        fetch('/api/companies?limit=100'),
+        fetch('/api/companies?limit=1000'),
         fetch('/api/person-types')
       ])
       const schoolsData = await schoolsRes.json()
       const companiesData = await companiesRes.json()
       const typesData = await typesRes.json()
-      setSchools(schoolsData)
-      setCompanies(companiesData.data || [])
+      setSchools(Array.isArray(schoolsData) ? schoolsData : [])
+      setCompanies(companiesData.data || companiesData || [])
       setPersonTypes(typesData)
     } catch (error) {
       console.error('Error fetching options:', error)
@@ -68,10 +70,16 @@ export function PersonForm({ person, isEdit = false }) {
       const url = isEdit ? `/api/people/${person.id}` : '/api/people'
       const method = isEdit ? 'PUT' : 'POST'
 
+      const submitData = {
+        ...formData,
+        company_ids: selectedCompanies.map(c => c.id),
+        school_ids: selectedSchools.map(s => s.id),
+      }
+
       const res = await fetch(url, {
         method,
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(formData),
+        body: JSON.stringify(submitData),
       })
 
       if (!res.ok) {
@@ -258,18 +266,13 @@ export function PersonForm({ person, isEdit = false }) {
           <CardTitle>Companies</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="grid gap-2 md:grid-cols-2 lg:grid-cols-3">
-            {companies.map((company) => (
-              <div key={company.id} className="flex items-center space-x-2">
-                <Checkbox
-                  id={`company-${company.id}`}
-                  checked={formData.company_ids.includes(company.id)}
-                  onCheckedChange={() => toggleArrayValue('company_ids', company.id)}
-                />
-                <Label htmlFor={`company-${company.id}`}>{company.name}</Label>
-              </div>
-            ))}
-          </div>
+          <MultiSelectSearch
+            options={companies}
+            selected={selectedCompanies}
+            onChange={setSelectedCompanies}
+            placeholder="Search companies..."
+            renderOption={(c) => c.name}
+          />
         </CardContent>
       </Card>
 
@@ -278,18 +281,13 @@ export function PersonForm({ person, isEdit = false }) {
           <CardTitle>Schools</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="grid gap-2 md:grid-cols-2 lg:grid-cols-3">
-            {schools.map((school) => (
-              <div key={school.id} className="flex items-center space-x-2">
-                <Checkbox
-                  id={`school-${school.id}`}
-                  checked={formData.school_ids.includes(school.id)}
-                  onCheckedChange={() => toggleArrayValue('school_ids', school.id)}
-                />
-                <Label htmlFor={`school-${school.id}`}>{school.name}</Label>
-              </div>
-            ))}
-          </div>
+          <MultiSelectSearch
+            options={schools}
+            selected={selectedSchools}
+            onChange={setSelectedSchools}
+            placeholder="Search schools..."
+            renderOption={(s) => s.name}
+          />
         </CardContent>
       </Card>
 

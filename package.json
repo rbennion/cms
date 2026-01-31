@@ -1,6 +1,6 @@
 {
-  "name": "nonprofit-crm",
-  "version": "0.1.0",
+  "name": "fight-club-crm",
+  "version": "0.2.0",
   "private": true,
   "scripts": {
     "dev": "next dev",
@@ -8,17 +8,10 @@
     "start": "next start",
     "lint": "next lint",
     "init-db": "node lib/init-db.js",
-    "seed": "node lib/seed.js"
+    "seed": "node lib/seed.js",
+    "import-data": "node lib/import-csv.js"
   },
   "dependencies": {
-    "next": "14.2.5",
-    "react": "^18",
-    "react-dom": "^18",
-    "@vercel/postgres": "^0.8.0",
-    "class-variance-authority": "^0.7.0",
-    "clsx": "^2.1.1",
-    "tailwind-merge": "^2.4.0",
-    "lucide-react": "^0.424.0",
     "@radix-ui/react-accordion": "^1.2.0",
     "@radix-ui/react-alert-dialog": "^1.1.1",
     "@radix-ui/react-avatar": "^1.1.0",
@@ -33,16 +26,26 @@
     "@radix-ui/react-slot": "^1.1.0",
     "@radix-ui/react-tabs": "^1.1.0",
     "@radix-ui/react-toast": "^1.2.1",
+    "@vercel/postgres": "^0.8.0",
+    "bcryptjs": "^3.0.3",
+    "class-variance-authority": "^0.7.0",
+    "clsx": "^2.1.1",
+    "cmdk": "^1.0.0",
     "date-fns": "^3.6.0",
+    "lucide-react": "^0.424.0",
+    "next": "14.2.5",
+    "next-auth": "^5.0.0-beta.30",
+    "react": "^18",
     "react-day-picker": "^8.10.1",
-    "cmdk": "^1.0.0"
+    "react-dom": "^18",
+    "tailwind-merge": "^2.4.0"
   },
   "devDependencies": {
-    "postcss": "^8",
-    "tailwindcss": "^3.4.1",
-    "tailwindcss-animate": "^1.0.7",
+    "autoprefixer": "^10.4.19",
     "eslint": "^8",
     "eslint-config-next": "14.2.5",
-    "autoprefixer": "^10.4.19"
+    "postcss": "^8",
+    "tailwindcss": "^3.4.1",
+    "tailwindcss-animate": "^1.0.7"
   }
 }

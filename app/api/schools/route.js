@@ -1,9 +1,23 @@
 import { NextResponse } from 'next/server'
 import { all, run, get } from '@/lib/db'
 
-export async function GET() {
+export async function GET(request) {
   try {
-    const schools = await all('SELECT * FROM schools ORDER BY name')
+    const { searchParams } = new URL(request.url)
+    const search = searchParams.get('search')
+
+    let query = 'SELECT * FROM schools WHERE 1=1'
+    const params = []
+
+    if (search) {
+      query += ' AND (name ILIKE ? OR city ILIKE ?)'
+      const searchTerm = `%${search}%`
+      params.push(searchTerm, searchTerm)
+    }
+
+    query += ' ORDER BY name'
+
+    const schools = await all(query, params)
     return NextResponse.json(schools)
   } catch (error) {
     console.error('Error fetching schools:', error)

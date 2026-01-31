@@ -31,7 +31,10 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useToast } from "@/components/ui/use-toast";
-import { Plus, MoreHorizontal, Pencil, Trash2, Eye } from "lucide-react";
+import { Plus, MoreHorizontal, Pencil, Trash2, Eye, Upload } from "lucide-react";
+import { ImportDialog } from "@/components/shared/import-dialog";
+import { ExportButton } from "@/components/shared/export-button";
+import { SavedViewsDropdown } from "@/components/shared/saved-views-dropdown";
 
 function PeoplePageContent() {
   const router = useRouter();
@@ -48,6 +51,7 @@ function PeoplePageContent() {
   const [personTypes, setPersonTypes] = useState([]);
   const [schools, setSchools] = useState([]);
   const [deleteId, setDeleteId] = useState(null);
+  const [showImportDialog, setShowImportDialog] = useState(false);
 
   const [filters, setFilters] = useState({
     search: searchParams.get("search") || "",
@@ -118,6 +122,16 @@ function PeoplePageContent() {
     router.push(`/people?${params}`);
   };
 
+  const handleApplyView = (filterState) => {
+    setFilters(filterState);
+    const params = new URLSearchParams();
+    Object.entries(filterState).forEach(([key, value]) => {
+      if (value) params.set(key, value);
+    });
+    params.set("page", "1");
+    router.push(`/people?${params}`);
+  };
+
   const handlePageChange = (page) => {
     const params = new URLSearchParams(searchParams);
     params.set("page", page.toString());
@@ -143,16 +157,28 @@ function PeoplePageContent() {
   return (
     <div className="flex flex-col">
       <Header title="People" description="Manage contacts and relationships">
-        <Button asChild>
-          <Link href="/people/new">
-            <Plus className="mr-2 h-4 w-4" />
-            Add Person
-          </Link>
-        </Button>
+        <div className="flex gap-2">
+          <ExportButton entityType="people" filters={filters} />
+          <Button variant="outline" onClick={() => setShowImportDialog(true)}>
+            <Upload className="mr-2 h-4 w-4" />
+            Import
+          </Button>
+          <Button asChild>
+            <Link href="/people/new">
+              <Plus className="mr-2 h-4 w-4" />
+              Add Person
+            </Link>
+          </Button>
+        </div>
       </Header>
 
       <div className="p-6">
-        <div className="mb-6 flex flex-wrap gap-4">
+        <div className="mb-6 flex flex-wrap items-center gap-4">
+          <SavedViewsDropdown
+            entityType="people"
+            currentFilters={filters}
+            onApplyView={handleApplyView}
+          />
           <SearchInput
             placeholder="Search people..."
             value={filters.search}
@@ -345,6 +371,13 @@ function PeoplePageContent() {
         description="Are you sure you want to delete this person? This action cannot be undone."
         confirmText="Delete"
         onConfirm={handleDelete}
+      />
+
+      <ImportDialog
+        open={showImportDialog}
+        onOpenChange={setShowImportDialog}
+        entityType="people"
+        onSuccess={fetchPeople}
       />
     </div>
   );
