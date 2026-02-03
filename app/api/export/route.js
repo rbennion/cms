@@ -39,7 +39,11 @@ export async function GET(request) {
       const params = [];
 
       if (filters.search) {
-        query += ` AND (p.first_name ILIKE $${params.length + 1} OR p.last_name ILIKE $${params.length + 2} OR p.email ILIKE $${params.length + 3})`;
+        query += ` AND (p.first_name ILIKE $${
+          params.length + 1
+        } OR p.last_name ILIKE $${params.length + 2} OR p.email ILIKE $${
+          params.length + 3
+        })`;
         const searchTerm = `%${filters.search}%`;
         params.push(searchTerm, searchTerm, searchTerm);
       }
@@ -49,7 +53,10 @@ export async function GET(request) {
         params.push(filters.is_donor === "true");
       }
 
-      if (filters.is_fc_certified !== undefined && filters.is_fc_certified !== "") {
+      if (
+        filters.is_fc_certified !== undefined &&
+        filters.is_fc_certified !== ""
+      ) {
         query += ` AND p.is_fc_certified = $${params.length + 1}`;
         params.push(filters.is_fc_certified === "true");
       }
@@ -102,13 +109,75 @@ export async function GET(request) {
         "is_donor",
       ];
     } else if (entityType === "schools") {
-      const result = await sql`
+      let query = `
         SELECT id, name, address, city, state, zip
         FROM schools
-        ORDER BY name
+        WHERE 1=1
       `;
+      const params = [];
+
+      if (filters.search) {
+        query += ` AND name ILIKE $${params.length + 1}`;
+        params.push(`%${filters.search}%`);
+      }
+
+      query += " ORDER BY name";
+
+      const result = await sql.query(query, params);
       data = result.rows;
       columns = ["id", "name", "address", "city", "state", "zip"];
+    } else if (entityType === "donations") {
+      let query = `
+        SELECT d.id, d.amount, d.date, d.note,
+               p.first_name, p.last_name, c.name as company_name,
+               CASE WHEN d.person_id IS NOT NULL THEN 'Individual' ELSE 'Company' END as donor_type
+        FROM donations d
+        LEFT JOIN people p ON d.person_id = p.id
+        LEFT JOIN companies c ON d.company_id = c.id
+        WHERE 1=1
+      `;
+      const params = [];
+
+      if (filters.search) {
+        query += ` AND (p.first_name ILIKE $${
+          params.length + 1
+        } OR p.last_name ILIKE $${params.length + 2} OR c.name ILIKE $${
+          params.length + 3
+        } OR d.note ILIKE $${params.length + 4})`;
+        const searchTerm = `%${filters.search}%`;
+        params.push(searchTerm, searchTerm, searchTerm, searchTerm);
+      }
+
+      if (filters.donor_type === "person") {
+        query += ` AND d.person_id IS NOT NULL`;
+      } else if (filters.donor_type === "company") {
+        query += ` AND d.company_id IS NOT NULL`;
+      }
+
+      if (filters.start_date) {
+        query += ` AND d.date >= $${params.length + 1}`;
+        params.push(filters.start_date);
+      }
+
+      if (filters.end_date) {
+        query += ` AND d.date <= $${params.length + 1}`;
+        params.push(filters.end_date);
+      }
+
+      query += " ORDER BY d.date DESC";
+
+      const result = await sql.query(query, params);
+      data = result.rows;
+      columns = [
+        "id",
+        "date",
+        "amount",
+        "donor_type",
+        "first_name",
+        "last_name",
+        "company_name",
+        "note",
+      ];
     } else {
       return NextResponse.json(
         { error: "Invalid entity type" },

@@ -25,6 +25,7 @@ import {
   ExternalLink,
   Save,
   X,
+  ArrowLeft,
 } from "lucide-react";
 
 export default function CompanyDetailPage() {
@@ -195,16 +196,32 @@ export default function CompanyDetailPage() {
   return (
     <div className="flex flex-col">
       <Header title={company.name}>
-        <Button variant="destructive" onClick={() => setShowDelete(true)}>
-          <Trash2 className="mr-2 h-4 w-4" />
-          Delete
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={() => setShowDelete(true)}
+          className="text-muted-foreground hover:text-destructive"
+        >
+          <Trash2 className="h-4 w-4" />
         </Button>
       </Header>
 
       <div className="p-6">
+        <div className="mb-6">
+          <Button variant="ghost" size="sm" asChild>
+            <Link href="/companies">
+              <ArrowLeft className="h-4 w-4 mr-2" />
+              Back to Companies
+            </Link>
+          </Button>
+        </div>
         <div className="grid gap-6 lg:grid-cols-3">
           {/* Company Info Card */}
-          <Card className="md:col-span-1">
+          <Card
+            className={`lg:col-span-1 ${
+              isEditingInfo ? "ring-2 ring-primary/20" : ""
+            }`}
+          >
             <CardHeader className="flex flex-row items-center justify-between pb-3">
               <CardTitle className="text-base">Company Information</CardTitle>
               {!isEditingInfo ? (

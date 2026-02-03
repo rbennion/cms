@@ -13,7 +13,15 @@ import { MultiSelectSearch } from "@/components/ui/multi-select-search";
 import { NotesList } from "@/components/notes/notes-list";
 import { ConfirmDialog } from "@/components/shared/confirm-dialog";
 import { useToast } from "@/components/ui/use-toast";
-import { Pencil, Trash2, MapPin, Users, Save, X } from "lucide-react";
+import {
+  Pencil,
+  Trash2,
+  MapPin,
+  Users,
+  Save,
+  X,
+  ArrowLeft,
+} from "lucide-react";
 
 export default function SchoolDetailPage() {
   const params = useParams();
@@ -180,15 +188,31 @@ export default function SchoolDetailPage() {
   return (
     <div className="flex flex-col">
       <Header title={school.name}>
-        <Button variant="destructive" onClick={() => setShowDelete(true)}>
-          <Trash2 className="mr-2 h-4 w-4" />
-          Delete
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={() => setShowDelete(true)}
+          className="text-muted-foreground hover:text-destructive"
+        >
+          <Trash2 className="h-4 w-4" />
         </Button>
       </Header>
 
       <div className="p-6">
+        <div className="mb-6">
+          <Button variant="ghost" size="sm" asChild>
+            <Link href="/schools">
+              <ArrowLeft className="h-4 w-4 mr-2" />
+              Back to Schools
+            </Link>
+          </Button>
+        </div>
         <div className="grid gap-6 lg:grid-cols-3">
-          <Card className="md:col-span-1">
+          <Card
+            className={`lg:col-span-1 ${
+              isEditingInfo ? "ring-2 ring-primary/20" : ""
+            }`}
+          >
             <CardHeader className="flex flex-row items-center justify-between pb-3">
               <CardTitle className="text-base">School Information</CardTitle>
               {!isEditingInfo ? (

@@ -1,22 +1,14 @@
 "use client";
 
-import { useState, useEffect, Suspense } from "react";
+import { useState, useEffect, Suspense, useMemo, useCallback } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Header } from "@/components/layout/header";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { SearchInput } from "@/components/shared/search-input";
-import { Pagination } from "@/components/shared/pagination";
 import { ConfirmDialog } from "@/components/shared/confirm-dialog";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
   Select,
   SelectContent,
@@ -24,17 +16,15 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import { useToast } from "@/components/ui/use-toast";
-import { Plus, MoreHorizontal, Pencil, Trash2, Eye, Upload } from "lucide-react";
+import { Plus, Upload, X, Filter, RotateCcw } from "lucide-react";
 import { ImportDialog } from "@/components/shared/import-dialog";
 import { ExportButton } from "@/components/shared/export-button";
 import { SavedViewsDropdown } from "@/components/shared/saved-views-dropdown";
+import { DataTable } from "@/components/ui/data-table";
+import { createPeopleColumns } from "@/components/people/columns";
+import { SearchableSelect } from "@/components/ui/searchable-select";
+import { MultiSelectFilter } from "@/components/ui/multi-select-filter";
 
 function PeoplePageContent() {
   const router = useRouter();
@@ -42,25 +32,38 @@ function PeoplePageContent() {
   const { toast } = useToast();
 
   const [people, setPeople] = useState([]);
-  const [pagination, setPagination] = useState({
-    page: 1,
-    totalPages: 1,
-    total: 0,
-  });
   const [loading, setLoading] = useState(true);
-  const [personTypes, setPersonTypes] = useState([]);
+  const [roles, setRoles] = useState([]);
+  const [engagementStages, setEngagementStages] = useState([]);
   const [schools, setSchools] = useState([]);
   const [deleteId, setDeleteId] = useState(null);
   const [showImportDialog, setShowImportDialog] = useState(false);
 
   const [filters, setFilters] = useState({
     search: searchParams.get("search") || "",
-    type: searchParams.get("type") || "",
+    role_ids: searchParams.get("role_ids")
+      ? searchParams.get("role_ids").split(",")
+      : [],
+    stage_id: searchParams.get("stage_id") || "",
     is_donor: searchParams.get("is_donor") || "",
     is_fc_certified: searchParams.get("is_fc_certified") || "",
-    is_board_member: searchParams.get("is_board_member") || "",
     school_id: searchParams.get("school_id") || "",
   });
+
+  // Memoize columns to prevent re-creation on every render
+  const columns = useMemo(
+    () => createPeopleColumns({ onDelete: setDeleteId }),
+    []
+  );
+
+  // Count active filters (excluding search)
+  const activeFilterCount = useMemo(() => {
+    return Object.entries(filters).filter(([key, value]) => {
+      if (key === "search") return false;
+      if (key === "role_ids") return Array.isArray(value) && value.length > 0;
+      return value;
+    }).length;
+  }, [filters]);
 
   useEffect(() => {
     fetchOptions();
@@ -68,15 +71,17 @@ function PeoplePageContent() {
 
   useEffect(() => {
     fetchPeople();
-  }, [filters, searchParams]);
+  }, [filters]);
 
   const fetchOptions = async () => {
     try {
-      const [typesRes, schoolsRes] = await Promise.all([
-        fetch("/api/person-types"),
+      const [rolesRes, stagesRes, schoolsRes] = await Promise.all([
+        fetch("/api/roles"),
+        fetch("/api/engagement-stages"),
         fetch("/api/schools"),
       ]);
-      setPersonTypes(await typesRes.json());
+      setRoles(await rolesRes.json());
+      setEngagementStages(await stagesRes.json());
       setSchools(await schoolsRes.json());
     } catch (error) {
       console.error("Error fetching options:", error);
@@ -86,17 +91,18 @@ function PeoplePageContent() {
   const fetchPeople = async () => {
     setLoading(true);
     try {
-      const page = searchParams.get("page") || 1;
-      const params = new URLSearchParams({
-        page,
-        limit: "20",
-        ...Object.fromEntries(Object.entries(filters).filter(([, v]) => v)),
+      const params = new URLSearchParams({ limit: "1000" });
+      Object.entries(filters).forEach(([key, value]) => {
+        if (key === "role_ids" && Array.isArray(value) && value.length > 0) {
+          params.set(key, value.join(","));
+        } else if (value && !Array.isArray(value)) {
+          params.set(key, value);
+        }
       });
 
       const res = await fetch(`/api/people?${params}`);
       const data = await res.json();
       setPeople(data.data || []);
-      setPagination(data.pagination || { page: 1, totalPages: 1, total: 0 });
     } catch (error) {
       console.error("Error fetching people:", error);
       toast({
@@ -109,34 +115,50 @@ function PeoplePageContent() {
     }
   };
 
-  const handleFilterChange = (key, value) => {
-    const actualValue = value === "all" ? "" : value;
-    setFilters((prev) => ({ ...prev, [key]: actualValue }));
-    const params = new URLSearchParams(searchParams);
-    if (actualValue) {
-      params.set(key, actualValue);
-    } else {
-      params.delete(key);
-    }
-    params.set("page", "1");
-    router.push(`/people?${params}`);
-  };
+  const updateURL = useCallback(
+    (newFilters) => {
+      const params = new URLSearchParams();
+      Object.entries(newFilters).forEach(([key, value]) => {
+        if (key === "role_ids" && Array.isArray(value) && value.length > 0) {
+          params.set(key, value.join(","));
+        } else if (value && !Array.isArray(value)) {
+          params.set(key, value);
+        }
+      });
+      router.push(`/people?${params}`);
+    },
+    [router]
+  );
 
-  const handleApplyView = (filterState) => {
-    setFilters(filterState);
-    const params = new URLSearchParams();
-    Object.entries(filterState).forEach(([key, value]) => {
-      if (value) params.set(key, value);
-    });
-    params.set("page", "1");
-    router.push(`/people?${params}`);
-  };
+  const handleFilterChange = useCallback(
+    (key, value) => {
+      const newFilters = { ...filters, [key]: value };
+      setFilters(newFilters);
+      updateURL(newFilters);
+    },
+    [filters, updateURL]
+  );
 
-  const handlePageChange = (page) => {
-    const params = new URLSearchParams(searchParams);
-    params.set("page", page.toString());
-    router.push(`/people?${params}`);
-  };
+  const handleClearFilters = useCallback(() => {
+    const clearedFilters = {
+      search: "",
+      role_ids: [],
+      stage_id: "",
+      is_donor: "",
+      is_fc_certified: "",
+      school_id: "",
+    };
+    setFilters(clearedFilters);
+    router.push("/people");
+  }, [router]);
+
+  const handleApplyView = useCallback(
+    (filterState) => {
+      setFilters(filterState);
+      updateURL(filterState);
+    },
+    [updateURL]
+  );
 
   const handleDelete = async () => {
     try {
@@ -153,6 +175,14 @@ function PeoplePageContent() {
       });
     }
   };
+
+  // Helper to get display name for filter values
+  const getRoleName = (id) =>
+    roles.find((r) => r.id.toString() === id)?.name || id;
+  const getStageName = (id) =>
+    engagementStages.find((s) => s.id.toString() === id)?.name || id;
+  const getSchoolName = (id) =>
+    schools.find((s) => s.id.toString() === id)?.name || id;
 
   return (
     <div className="flex flex-col">
@@ -173,194 +203,224 @@ function PeoplePageContent() {
       </Header>
 
       <div className="p-6">
-        <div className="mb-6 flex flex-wrap items-center gap-4">
+        {/* Search and Filter Row */}
+        <div className="mb-4 flex flex-wrap items-center gap-3">
           <SavedViewsDropdown
             entityType="people"
             currentFilters={filters}
             onApplyView={handleApplyView}
           />
           <SearchInput
-            placeholder="Search people..."
+            placeholder="Search by name, email, or phone..."
             value={filters.search}
             onChange={(value) => handleFilterChange("search", value)}
-            className="w-64"
+            className="w-80"
+          />
+
+          <div className="flex items-center gap-2">
+            <Filter className="h-4 w-4 text-muted-foreground" />
+            <span className="text-sm text-muted-foreground">Filters:</span>
+          </div>
+
+          <MultiSelectFilter
+            options={roles}
+            value={filters.role_ids}
+            onChange={(value) => handleFilterChange("role_ids", value)}
+            placeholder="Roles"
+            showSearch={false}
+            renderOption={(role) => role.name}
+            getBadgeVariant={(name) => {
+              const n = name.toLowerCase();
+              if (n.includes("board")) return "purple";
+              if (n.includes("volunteer")) return "teal";
+              if (n.includes("parent")) return "pink";
+              if (n.includes("fc leader")) return "indigo";
+              if (n.includes("potential")) return "warning";
+              if (n.includes("vendor")) return "orange";
+              if (n.includes("partner")) return "cyan";
+              return "secondary";
+            }}
           />
 
           <Select
-            value={filters.type || "all"}
-            onValueChange={(value) => handleFilterChange("type", value)}
-          >
-            <SelectTrigger className="w-40">
-              <SelectValue placeholder="Type" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Types</SelectItem>
-              {personTypes.map((type) => (
-                <SelectItem key={type.id} value={type.id.toString()}>
-                  {type.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-
-          <Select
-            value={filters.is_donor || "all"}
-            onValueChange={(value) => handleFilterChange("is_donor", value)}
-          >
-            <SelectTrigger className="w-32">
-              <SelectValue placeholder="Donor" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All</SelectItem>
-              <SelectItem value="true">Donors</SelectItem>
-              <SelectItem value="false">Non-donors</SelectItem>
-            </SelectContent>
-          </Select>
-
-          <Select
-            value={filters.is_fc_certified || "all"}
+            value={filters.stage_id || "_all"}
             onValueChange={(value) =>
-              handleFilterChange("is_fc_certified", value)
+              handleFilterChange("stage_id", value === "_all" ? "" : value)
             }
           >
-            <SelectTrigger className="w-36">
-              <SelectValue placeholder="Certified" />
+            <SelectTrigger
+              className={`w-36 ${
+                filters.stage_id ? "border-primary bg-primary/5" : ""
+              }`}
+            >
+              <SelectValue placeholder="Stage" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">All</SelectItem>
-              <SelectItem value="true">Certified</SelectItem>
-              <SelectItem value="false">Not Certified</SelectItem>
-            </SelectContent>
-          </Select>
-
-          <Select
-            value={filters.school_id || "all"}
-            onValueChange={(value) => handleFilterChange("school_id", value)}
-          >
-            <SelectTrigger className="w-48">
-              <SelectValue placeholder="School" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Schools</SelectItem>
-              {schools.map((school) => (
-                <SelectItem key={school.id} value={school.id.toString()}>
-                  {school.name}
+              <SelectItem value="_all">All Stages</SelectItem>
+              {engagementStages.map((stage) => (
+                <SelectItem key={stage.id} value={stage.id.toString()}>
+                  {stage.name}
                 </SelectItem>
               ))}
             </SelectContent>
           </Select>
+
+          <Select
+            value={filters.is_donor || "_all"}
+            onValueChange={(value) =>
+              handleFilterChange("is_donor", value === "_all" ? "" : value)
+            }
+          >
+            <SelectTrigger
+              className={`w-36 ${
+                filters.is_donor ? "border-primary bg-primary/5" : ""
+              }`}
+            >
+              <SelectValue placeholder="Donor Status" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="_all">All Donor Status</SelectItem>
+              <SelectItem value="true">Donors Only</SelectItem>
+              <SelectItem value="false">Non-Donors Only</SelectItem>
+            </SelectContent>
+          </Select>
+
+          <Select
+            value={filters.is_fc_certified || "_all"}
+            onValueChange={(value) =>
+              handleFilterChange(
+                "is_fc_certified",
+                value === "_all" ? "" : value
+              )
+            }
+          >
+            <SelectTrigger
+              className={`w-40 ${
+                filters.is_fc_certified ? "border-primary bg-primary/5" : ""
+              }`}
+            >
+              <SelectValue placeholder="Certification" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="_all">All Certification</SelectItem>
+              <SelectItem value="true">Certified Only</SelectItem>
+              <SelectItem value="false">Not Certified Only</SelectItem>
+            </SelectContent>
+          </Select>
+
+          <SearchableSelect
+            options={schools}
+            value={filters.school_id}
+            onChange={(value) => handleFilterChange("school_id", value)}
+            placeholder="School"
+            allLabel="All Schools"
+            className="w-48"
+            renderOption={(school) => school.name}
+            showSearch={false}
+          />
+
+          {activeFilterCount > 0 && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handleClearFilters}
+              className="h-9 px-2 text-muted-foreground hover:text-foreground"
+            >
+              <RotateCcw className="h-4 w-4 mr-1" />
+              Clear
+            </Button>
+          )}
         </div>
 
-        <div className="rounded-md border">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Name</TableHead>
-                <TableHead>Email</TableHead>
-                <TableHead>Phone</TableHead>
-                <TableHead>Types</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead className="w-[70px]"></TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {loading ? (
-                <TableRow>
-                  <TableCell colSpan={6} className="text-center py-8">
-                    Loading...
-                  </TableCell>
-                </TableRow>
-              ) : people.length === 0 ? (
-                <TableRow>
-                  <TableCell
-                    colSpan={6}
-                    className="text-center py-8 text-muted-foreground"
-                  >
-                    No people found
-                  </TableCell>
-                </TableRow>
-              ) : (
-                people.map((person) => (
-                  <TableRow key={person.id}>
-                    <TableCell>
-                      <Link
-                        href={`/people/${person.id}`}
-                        className="font-medium hover:underline"
-                      >
-                        {person.first_name} {person.last_name}
-                      </Link>
-                      {person.title && (
-                        <p className="text-sm text-muted-foreground">
-                          {person.title}
-                        </p>
-                      )}
-                    </TableCell>
-                    <TableCell>{person.email}</TableCell>
-                    <TableCell>{person.phone}</TableCell>
-                    <TableCell>
-                      {person.types && (
-                        <div className="flex flex-wrap gap-1">
-                          {person.types.split(",").map((type, i) => (
-                            <Badge key={i} variant="secondary">
-                              {type}
-                            </Badge>
-                          ))}
-                        </div>
-                      )}
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex flex-wrap gap-1">
-                        {person.is_donor ? (
-                          <Badge variant="success">Donor</Badge>
-                        ) : null}
-                        {person.is_fc_certified ? (
-                          <Badge variant="info">Certified</Badge>
-                        ) : null}
-                        {person.is_board_member ? <Badge>Board</Badge> : null}
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="icon">
-                            <MoreHorizontal className="h-4 w-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuItem asChild>
-                            <Link href={`/people/${person.id}`}>
-                              <Eye className="mr-2 h-4 w-4" />
-                              View
-                            </Link>
-                          </DropdownMenuItem>
-                          <DropdownMenuItem asChild>
-                            <Link href={`/people/${person.id}/edit`}>
-                              <Pencil className="mr-2 h-4 w-4" />
-                              Edit
-                            </Link>
-                          </DropdownMenuItem>
-                          <DropdownMenuItem
-                            className="text-destructive"
-                            onClick={() => setDeleteId(person.id)}
-                          >
-                            <Trash2 className="mr-2 h-4 w-4" />
-                            Delete
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </TableCell>
-                  </TableRow>
-                ))
-              )}
-            </TableBody>
-          </Table>
-        </div>
+        {/* Active Filters Display */}
+        {(activeFilterCount > 0 || filters.search) && (
+          <div className="mb-4 flex flex-wrap items-center gap-2">
+            <span className="text-sm text-muted-foreground">Active:</span>
+            {filters.search && (
+              <Badge variant="secondary" className="gap-1">
+                Search: "{filters.search}"
+                <button
+                  onClick={() => handleFilterChange("search", "")}
+                  className="ml-1 hover:text-destructive"
+                >
+                  <X className="h-3 w-3" />
+                </button>
+              </Badge>
+            )}
+            {filters.role_ids?.length > 0 && (
+              <Badge variant="secondary" className="gap-1">
+                Roles:{" "}
+                {filters.role_ids.map((id) => getRoleName(id)).join(", ")}
+                <button
+                  onClick={() => handleFilterChange("role_ids", [])}
+                  className="ml-1 hover:text-destructive"
+                >
+                  <X className="h-3 w-3" />
+                </button>
+              </Badge>
+            )}
+            {filters.stage_id && (
+              <Badge variant="secondary" className="gap-1">
+                Stage: {getStageName(filters.stage_id)}
+                <button
+                  onClick={() => handleFilterChange("stage_id", "")}
+                  className="ml-1 hover:text-destructive"
+                >
+                  <X className="h-3 w-3" />
+                </button>
+              </Badge>
+            )}
+            {filters.is_donor && (
+              <Badge variant="secondary" className="gap-1">
+                {filters.is_donor === "true" ? "Donors" : "Non-Donors"}
+                <button
+                  onClick={() => handleFilterChange("is_donor", "")}
+                  className="ml-1 hover:text-destructive"
+                >
+                  <X className="h-3 w-3" />
+                </button>
+              </Badge>
+            )}
+            {filters.is_fc_certified && (
+              <Badge variant="secondary" className="gap-1">
+                {filters.is_fc_certified === "true"
+                  ? "Certified"
+                  : "Not Certified"}
+                <button
+                  onClick={() => handleFilterChange("is_fc_certified", "")}
+                  className="ml-1 hover:text-destructive"
+                >
+                  <X className="h-3 w-3" />
+                </button>
+              </Badge>
+            )}
+            {filters.school_id && (
+              <Badge variant="secondary" className="gap-1">
+                School: {getSchoolName(filters.school_id)}
+                <button
+                  onClick={() => handleFilterChange("school_id", "")}
+                  className="ml-1 hover:text-destructive"
+                >
+                  <X className="h-3 w-3" />
+                </button>
+              </Badge>
+            )}
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handleClearFilters}
+              className="h-6 px-2 text-xs"
+            >
+              Clear all
+            </Button>
+          </div>
+        )}
 
-        <Pagination
-          page={pagination.page}
-          totalPages={pagination.totalPages}
-          total={pagination.total}
-          onPageChange={handlePageChange}
+        <DataTable
+          columns={columns}
+          data={people}
+          loading={loading}
+          emptyMessage="No people found matching your filters"
         />
       </div>
 
@@ -385,7 +445,13 @@ function PeoplePageContent() {
 
 export default function PeoplePage() {
   return (
-    <Suspense fallback={<div className="p-6">Loading...</div>}>
+    <Suspense
+      fallback={
+        <div className="p-6">
+          <Skeleton className="h-96 w-full" />
+        </div>
+      }
+    >
       <PeoplePageContent />
     </Suspense>
   );

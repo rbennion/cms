@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, Suspense } from "react";
+import { useState, useEffect, Suspense, useMemo, useCallback } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Header } from "@/components/layout/header";
@@ -8,17 +8,9 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { SearchInput } from "@/components/shared/search-input";
-import { Pagination } from "@/components/shared/pagination";
 import { ConfirmDialog } from "@/components/shared/confirm-dialog";
+import { Skeleton } from "@/components/ui/skeleton";
 import { DatePicker } from "@/components/shared/date-picker";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
 import {
   Select,
   SelectContent,
@@ -26,23 +18,13 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import { useToast } from "@/components/ui/use-toast";
 import { formatCurrency, formatDate } from "@/lib/utils";
-import {
-  Plus,
-  MoreHorizontal,
-  Pencil,
-  Trash2,
-  TrendingUp,
-  DollarSign,
-  Users,
-} from "lucide-react";
+import { Plus, TrendingUp, DollarSign, Users, X, Filter } from "lucide-react";
+import { ExportButton } from "@/components/shared/export-button";
+import { SavedViewsDropdown } from "@/components/shared/saved-views-dropdown";
+import { DataTable } from "@/components/ui/data-table";
+import { createDonationsColumns } from "@/components/donations/columns";
 
 function DonationsPageContent() {
   const router = useRouter();
@@ -51,11 +33,6 @@ function DonationsPageContent() {
 
   const [donations, setDonations] = useState([]);
   const [stats, setStats] = useState(null);
-  const [pagination, setPagination] = useState({
-    page: 1,
-    totalPages: 1,
-    total: 0,
-  });
   const [loading, setLoading] = useState(true);
   const [deleteId, setDeleteId] = useState(null);
 
@@ -66,10 +43,21 @@ function DonationsPageContent() {
     end_date: searchParams.get("end_date") || "",
   });
 
+  const columns = useMemo(
+    () => createDonationsColumns({ onDelete: setDeleteId }),
+    []
+  );
+
+  const activeFilterCount = useMemo(() => {
+    return Object.entries(filters).filter(
+      ([key, value]) => key !== "search" && value
+    ).length;
+  }, [filters]);
+
   useEffect(() => {
     fetchDonations();
     fetchStats();
-  }, [filters, searchParams]);
+  }, [filters]);
 
   const fetchStats = async () => {
     try {
@@ -84,17 +72,14 @@ function DonationsPageContent() {
   const fetchDonations = async () => {
     setLoading(true);
     try {
-      const page = searchParams.get("page") || 1;
-      const params = new URLSearchParams({
-        page,
-        limit: "20",
-        ...Object.fromEntries(Object.entries(filters).filter(([, v]) => v)),
+      const params = new URLSearchParams({ limit: "1000" });
+      Object.entries(filters).forEach(([key, value]) => {
+        if (value) params.set(key, value);
       });
 
       const res = await fetch(`/api/donations?${params}`);
       const data = await res.json();
       setDonations(data.data || []);
-      setPagination(data.pagination || { page: 1, totalPages: 1, total: 0 });
     } catch (error) {
       console.error("Error fetching donations:", error);
       toast({
@@ -107,24 +92,44 @@ function DonationsPageContent() {
     }
   };
 
-  const handleFilterChange = (key, value) => {
-    const actualValue = value === "all" ? "" : value;
-    setFilters((prev) => ({ ...prev, [key]: actualValue }));
-    const params = new URLSearchParams(searchParams);
-    if (actualValue) {
-      params.set(key, actualValue);
-    } else {
-      params.delete(key);
-    }
-    params.set("page", "1");
-    router.push(`/donations?${params}`);
-  };
+  const updateURL = useCallback(
+    (newFilters) => {
+      const params = new URLSearchParams();
+      Object.entries(newFilters).forEach(([key, value]) => {
+        if (value) params.set(key, value);
+      });
+      router.push(`/donations?${params}`);
+    },
+    [router]
+  );
 
-  const handlePageChange = (page) => {
-    const params = new URLSearchParams(searchParams);
-    params.set("page", page.toString());
-    router.push(`/donations?${params}`);
-  };
+  const handleFilterChange = useCallback(
+    (key, value) => {
+      const newFilters = { ...filters, [key]: value };
+      setFilters(newFilters);
+      updateURL(newFilters);
+    },
+    [filters, updateURL]
+  );
+
+  const handleClearFilters = useCallback(() => {
+    const clearedFilters = {
+      search: "",
+      donor_type: "",
+      start_date: "",
+      end_date: "",
+    };
+    setFilters(clearedFilters);
+    router.push("/donations");
+  }, [router]);
+
+  const handleApplyView = useCallback(
+    (filterState) => {
+      setFilters(filterState);
+      updateURL(filterState);
+    },
+    [updateURL]
+  );
 
   const handleDelete = async () => {
     try {
@@ -148,12 +153,15 @@ function DonationsPageContent() {
   return (
     <div className="flex flex-col">
       <Header title="Donations" description="Track and manage contributions">
-        <Button asChild>
-          <Link href="/donations/new">
-            <Plus className="mr-2 h-4 w-4" />
-            Add Donation
-          </Link>
-        </Button>
+        <div className="flex gap-2">
+          <ExportButton entityType="donations" filters={filters} />
+          <Button asChild>
+            <Link href="/donations/new">
+              <Plus className="mr-2 h-4 w-4" />
+              Add Donation
+            </Link>
+          </Button>
+        </div>
       </Header>
 
       <div className="p-6">
@@ -211,144 +219,123 @@ function DonationsPageContent() {
           </Card>
         </div>
 
-        {/* Filters */}
-        <div className="mb-6 flex flex-wrap gap-4">
+        {/* Search and Filter Row */}
+        <div className="mb-4 flex flex-wrap items-center gap-3">
+          <SavedViewsDropdown
+            entityType="donations"
+            currentFilters={filters}
+            onApplyView={handleApplyView}
+          />
           <SearchInput
-            placeholder="Search donations..."
+            placeholder="Search by donor name or note..."
             value={filters.search}
             onChange={(value) => handleFilterChange("search", value)}
-            className="w-64"
+            className="w-80"
           />
 
+          <div className="flex items-center gap-2">
+            <Filter className="h-4 w-4 text-muted-foreground" />
+            <span className="text-sm text-muted-foreground">Filters:</span>
+          </div>
+
           <Select
-            value={filters.donor_type || "all"}
-            onValueChange={(value) => handleFilterChange("donor_type", value)}
+            value={filters.donor_type || "_all"}
+            onValueChange={(value) =>
+              handleFilterChange("donor_type", value === "_all" ? "" : value)
+            }
           >
-            <SelectTrigger className="w-36">
+            <SelectTrigger
+              className={`w-40 ${filters.donor_type ? "border-primary bg-primary/5" : ""}`}
+            >
               <SelectValue placeholder="Donor Type" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">All</SelectItem>
-              <SelectItem value="person">Individuals</SelectItem>
-              <SelectItem value="company">Companies</SelectItem>
+              <SelectItem value="_all">All Donor Types</SelectItem>
+              <SelectItem value="person">Individuals Only</SelectItem>
+              <SelectItem value="company">Companies Only</SelectItem>
             </SelectContent>
           </Select>
 
           <div className="flex items-center gap-2">
+            <span className="text-sm text-muted-foreground">Date range:</span>
             <DatePicker
               date={filters.start_date}
-              onDateChange={(date) =>
-                handleFilterChange("start_date", date || "")
-              }
-              placeholder="Start date"
+              onDateChange={(date) => handleFilterChange("start_date", date || "")}
+              placeholder="From"
             />
-            <span className="text-muted-foreground">to</span>
+            <span className="text-muted-foreground">-</span>
             <DatePicker
               date={filters.end_date}
-              onDateChange={(date) =>
-                handleFilterChange("end_date", date || "")
-              }
-              placeholder="End date"
+              onDateChange={(date) => handleFilterChange("end_date", date || "")}
+              placeholder="To"
             />
           </div>
         </div>
 
-        <div className="rounded-md border">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Date</TableHead>
-                <TableHead>Donor</TableHead>
-                <TableHead>Type</TableHead>
-                <TableHead>Note</TableHead>
-                <TableHead className="text-right">Amount</TableHead>
-                <TableHead className="w-[70px]"></TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {loading ? (
-                <TableRow>
-                  <TableCell colSpan={6} className="text-center py-8">
-                    Loading...
-                  </TableCell>
-                </TableRow>
-              ) : donations.length === 0 ? (
-                <TableRow>
-                  <TableCell
-                    colSpan={6}
-                    className="text-center py-8 text-muted-foreground"
-                  >
-                    No donations found
-                  </TableCell>
-                </TableRow>
-              ) : (
-                donations.map((donation) => (
-                  <TableRow key={donation.id}>
-                    <TableCell>{formatDate(donation.date)}</TableCell>
-                    <TableCell>
-                      {donation.first_name ? (
-                        <Link
-                          href={`/people/${donation.person_id}`}
-                          className="font-medium hover:underline"
-                        >
-                          {donation.first_name} {donation.last_name}
-                        </Link>
-                      ) : (
-                        <Link
-                          href={`/companies/${donation.company_id}`}
-                          className="font-medium hover:underline"
-                        >
-                          {donation.company_name}
-                        </Link>
-                      )}
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant="outline">
-                        {donation.first_name ? "Individual" : "Company"}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="max-w-[200px] truncate">
-                      {donation.note || "-"}
-                    </TableCell>
-                    <TableCell className="text-right font-semibold text-green-600">
-                      {formatCurrency(donation.amount)}
-                    </TableCell>
-                    <TableCell>
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="icon">
-                            <MoreHorizontal className="h-4 w-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuItem asChild>
-                            <Link href={`/donations/${donation.id}/edit`}>
-                              <Pencil className="mr-2 h-4 w-4" />
-                              Edit
-                            </Link>
-                          </DropdownMenuItem>
-                          <DropdownMenuItem
-                            className="text-destructive"
-                            onClick={() => setDeleteId(donation.id)}
-                          >
-                            <Trash2 className="mr-2 h-4 w-4" />
-                            Delete
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </TableCell>
-                  </TableRow>
-                ))
-              )}
-            </TableBody>
-          </Table>
-        </div>
+        {/* Active Filters Display */}
+        {(activeFilterCount > 0 || filters.search) && (
+          <div className="mb-4 flex flex-wrap items-center gap-2">
+            <span className="text-sm text-muted-foreground">Active:</span>
+            {filters.search && (
+              <Badge variant="secondary" className="gap-1">
+                Search: "{filters.search}"
+                <button
+                  onClick={() => handleFilterChange("search", "")}
+                  className="ml-1 hover:text-destructive"
+                >
+                  <X className="h-3 w-3" />
+                </button>
+              </Badge>
+            )}
+            {filters.donor_type && (
+              <Badge variant="secondary" className="gap-1">
+                {filters.donor_type === "person" ? "Individuals" : "Companies"}
+                <button
+                  onClick={() => handleFilterChange("donor_type", "")}
+                  className="ml-1 hover:text-destructive"
+                >
+                  <X className="h-3 w-3" />
+                </button>
+              </Badge>
+            )}
+            {filters.start_date && (
+              <Badge variant="secondary" className="gap-1">
+                From: {formatDate(filters.start_date)}
+                <button
+                  onClick={() => handleFilterChange("start_date", "")}
+                  className="ml-1 hover:text-destructive"
+                >
+                  <X className="h-3 w-3" />
+                </button>
+              </Badge>
+            )}
+            {filters.end_date && (
+              <Badge variant="secondary" className="gap-1">
+                To: {formatDate(filters.end_date)}
+                <button
+                  onClick={() => handleFilterChange("end_date", "")}
+                  className="ml-1 hover:text-destructive"
+                >
+                  <X className="h-3 w-3" />
+                </button>
+              </Badge>
+            )}
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handleClearFilters}
+              className="h-6 px-2 text-xs"
+            >
+              Clear all
+            </Button>
+          </div>
+        )}
 
-        <Pagination
-          page={pagination.page}
-          totalPages={pagination.totalPages}
-          total={pagination.total}
-          onPageChange={handlePageChange}
+        <DataTable
+          columns={columns}
+          data={donations}
+          loading={loading}
+          emptyMessage="No donations found matching your filters"
         />
       </div>
 
@@ -366,7 +353,13 @@ function DonationsPageContent() {
 
 export default function DonationsPage() {
   return (
-    <Suspense fallback={<div className="p-6">Loading...</div>}>
+    <Suspense
+      fallback={
+        <div className="p-6">
+          <Skeleton className="h-96 w-full" />
+        </div>
+      }
+    >
       <DonationsPageContent />
     </Suspense>
   );

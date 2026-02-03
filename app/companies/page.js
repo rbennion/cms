@@ -1,22 +1,14 @@
 "use client";
 
-import { useState, useEffect, Suspense } from "react";
+import { useState, useEffect, Suspense, useMemo, useCallback } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Header } from "@/components/layout/header";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { SearchInput } from "@/components/shared/search-input";
-import { Pagination } from "@/components/shared/pagination";
 import { ConfirmDialog } from "@/components/shared/confirm-dialog";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
   Select,
   SelectContent,
@@ -24,25 +16,13 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import { useToast } from "@/components/ui/use-toast";
-import {
-  Plus,
-  MoreHorizontal,
-  Pencil,
-  Trash2,
-  Eye,
-  ExternalLink,
-  Upload,
-} from "lucide-react";
+import { Plus, Upload, X, Filter } from "lucide-react";
 import { ImportDialog } from "@/components/shared/import-dialog";
 import { ExportButton } from "@/components/shared/export-button";
 import { SavedViewsDropdown } from "@/components/shared/saved-views-dropdown";
+import { DataTable } from "@/components/ui/data-table";
+import { createCompaniesColumns } from "@/components/companies/columns";
 
 function CompaniesPageContent() {
   const router = useRouter();
@@ -50,11 +30,6 @@ function CompaniesPageContent() {
   const { toast } = useToast();
 
   const [companies, setCompanies] = useState([]);
-  const [pagination, setPagination] = useState({
-    page: 1,
-    totalPages: 1,
-    total: 0,
-  });
   const [loading, setLoading] = useState(true);
   const [deleteId, setDeleteId] = useState(null);
   const [showImportDialog, setShowImportDialog] = useState(false);
@@ -64,24 +39,32 @@ function CompaniesPageContent() {
     is_donor: searchParams.get("is_donor") || "",
   });
 
+  const columns = useMemo(
+    () => createCompaniesColumns({ onDelete: setDeleteId }),
+    []
+  );
+
+  const activeFilterCount = useMemo(() => {
+    return Object.entries(filters).filter(
+      ([key, value]) => key !== "search" && value
+    ).length;
+  }, [filters]);
+
   useEffect(() => {
     fetchCompanies();
-  }, [filters, searchParams]);
+  }, [filters]);
 
   const fetchCompanies = async () => {
     setLoading(true);
     try {
-      const page = searchParams.get("page") || 1;
-      const params = new URLSearchParams({
-        page,
-        limit: "20",
-        ...Object.fromEntries(Object.entries(filters).filter(([, v]) => v)),
+      const params = new URLSearchParams({ limit: "1000" });
+      Object.entries(filters).forEach(([key, value]) => {
+        if (value) params.set(key, value);
       });
 
       const res = await fetch(`/api/companies?${params}`);
       const data = await res.json();
       setCompanies(data.data || []);
-      setPagination(data.pagination || { page: 1, totalPages: 1, total: 0 });
     } catch (error) {
       console.error("Error fetching companies:", error);
       toast({
@@ -94,34 +77,39 @@ function CompaniesPageContent() {
     }
   };
 
-  const handleFilterChange = (key, value) => {
-    const actualValue = value === "all" ? "" : value;
-    setFilters((prev) => ({ ...prev, [key]: actualValue }));
-    const params = new URLSearchParams(searchParams);
-    if (actualValue) {
-      params.set(key, actualValue);
-    } else {
-      params.delete(key);
-    }
-    params.set("page", "1");
-    router.push(`/companies?${params}`);
-  };
+  const updateURL = useCallback(
+    (newFilters) => {
+      const params = new URLSearchParams();
+      Object.entries(newFilters).forEach(([key, value]) => {
+        if (value) params.set(key, value);
+      });
+      router.push(`/companies?${params}`);
+    },
+    [router]
+  );
 
-  const handleApplyView = (filterState) => {
-    setFilters(filterState);
-    const params = new URLSearchParams();
-    Object.entries(filterState).forEach(([key, value]) => {
-      if (value) params.set(key, value);
-    });
-    params.set("page", "1");
-    router.push(`/companies?${params}`);
-  };
+  const handleFilterChange = useCallback(
+    (key, value) => {
+      const newFilters = { ...filters, [key]: value };
+      setFilters(newFilters);
+      updateURL(newFilters);
+    },
+    [filters, updateURL]
+  );
 
-  const handlePageChange = (page) => {
-    const params = new URLSearchParams(searchParams);
-    params.set("page", page.toString());
-    router.push(`/companies?${params}`);
-  };
+  const handleClearFilters = useCallback(() => {
+    const clearedFilters = { search: "", is_donor: "" };
+    setFilters(clearedFilters);
+    router.push("/companies");
+  }, [router]);
+
+  const handleApplyView = useCallback(
+    (filterState) => {
+      setFilters(filterState);
+      updateURL(filterState);
+    },
+    [updateURL]
+  );
 
   const handleDelete = async () => {
     try {
@@ -163,139 +151,86 @@ function CompaniesPageContent() {
       </Header>
 
       <div className="p-6">
-        <div className="mb-6 flex flex-wrap items-center gap-4">
+        {/* Search and Filter Row */}
+        <div className="mb-4 flex flex-wrap items-center gap-3">
           <SavedViewsDropdown
             entityType="companies"
             currentFilters={filters}
             onApplyView={handleApplyView}
           />
           <SearchInput
-            placeholder="Search companies..."
+            placeholder="Search by company name..."
             value={filters.search}
             onChange={(value) => handleFilterChange("search", value)}
-            className="w-64"
+            className="w-80"
           />
 
+          <div className="flex items-center gap-2">
+            <Filter className="h-4 w-4 text-muted-foreground" />
+            <span className="text-sm text-muted-foreground">Filters:</span>
+          </div>
+
           <Select
-            value={filters.is_donor || "all"}
-            onValueChange={(value) => handleFilterChange("is_donor", value)}
+            value={filters.is_donor || "_all"}
+            onValueChange={(value) =>
+              handleFilterChange("is_donor", value === "_all" ? "" : value)
+            }
           >
-            <SelectTrigger className="w-36">
+            <SelectTrigger
+              className={`w-40 ${filters.is_donor ? "border-primary bg-primary/5" : ""}`}
+            >
               <SelectValue placeholder="Donor Status" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">All</SelectItem>
-              <SelectItem value="true">Donors</SelectItem>
-              <SelectItem value="false">Non-donors</SelectItem>
+              <SelectItem value="_all">All Donor Status</SelectItem>
+              <SelectItem value="true">Donors Only</SelectItem>
+              <SelectItem value="false">Non-Donors Only</SelectItem>
             </SelectContent>
           </Select>
         </div>
 
-        <div className="rounded-md border">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Name</TableHead>
-                <TableHead>Location</TableHead>
-                <TableHead>Website</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead className="w-[70px]"></TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {loading ? (
-                <TableRow>
-                  <TableCell colSpan={5} className="text-center py-8">
-                    Loading...
-                  </TableCell>
-                </TableRow>
-              ) : companies.length === 0 ? (
-                <TableRow>
-                  <TableCell
-                    colSpan={5}
-                    className="text-center py-8 text-muted-foreground"
-                  >
-                    No companies found
-                  </TableCell>
-                </TableRow>
-              ) : (
-                companies.map((company) => (
-                  <TableRow key={company.id}>
-                    <TableCell>
-                      <Link
-                        href={`/companies/${company.id}`}
-                        className="font-medium hover:underline"
-                      >
-                        {company.name}
-                      </Link>
-                    </TableCell>
-                    <TableCell>
-                      {company.city && company.state
-                        ? `${company.city}, ${company.state}`
-                        : company.city || company.state || "-"}
-                    </TableCell>
-                    <TableCell>
-                      {company.website ? (
-                        <a
-                          href={company.website}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="flex items-center gap-1 text-sm hover:underline"
-                        >
-                          Visit
-                          <ExternalLink className="h-3 w-3" />
-                        </a>
-                      ) : (
-                        "-"
-                      )}
-                    </TableCell>
-                    <TableCell>
-                      {company.is_donor ? (
-                        <Badge variant="success">Donor</Badge>
-                      ) : null}
-                    </TableCell>
-                    <TableCell>
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="icon">
-                            <MoreHorizontal className="h-4 w-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuItem asChild>
-                            <Link href={`/companies/${company.id}`}>
-                              <Eye className="mr-2 h-4 w-4" />
-                              View
-                            </Link>
-                          </DropdownMenuItem>
-                          <DropdownMenuItem asChild>
-                            <Link href={`/companies/${company.id}/edit`}>
-                              <Pencil className="mr-2 h-4 w-4" />
-                              Edit
-                            </Link>
-                          </DropdownMenuItem>
-                          <DropdownMenuItem
-                            className="text-destructive"
-                            onClick={() => setDeleteId(company.id)}
-                          >
-                            <Trash2 className="mr-2 h-4 w-4" />
-                            Delete
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </TableCell>
-                  </TableRow>
-                ))
-              )}
-            </TableBody>
-          </Table>
-        </div>
+        {/* Active Filters Display */}
+        {(activeFilterCount > 0 || filters.search) && (
+          <div className="mb-4 flex flex-wrap items-center gap-2">
+            <span className="text-sm text-muted-foreground">Active:</span>
+            {filters.search && (
+              <Badge variant="secondary" className="gap-1">
+                Search: "{filters.search}"
+                <button
+                  onClick={() => handleFilterChange("search", "")}
+                  className="ml-1 hover:text-destructive"
+                >
+                  <X className="h-3 w-3" />
+                </button>
+              </Badge>
+            )}
+            {filters.is_donor && (
+              <Badge variant="secondary" className="gap-1">
+                {filters.is_donor === "true" ? "Donors" : "Non-Donors"}
+                <button
+                  onClick={() => handleFilterChange("is_donor", "")}
+                  className="ml-1 hover:text-destructive"
+                >
+                  <X className="h-3 w-3" />
+                </button>
+              </Badge>
+            )}
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handleClearFilters}
+              className="h-6 px-2 text-xs"
+            >
+              Clear all
+            </Button>
+          </div>
+        )}
 
-        <Pagination
-          page={pagination.page}
-          totalPages={pagination.totalPages}
-          total={pagination.total}
-          onPageChange={handlePageChange}
+        <DataTable
+          columns={columns}
+          data={companies}
+          loading={loading}
+          emptyMessage="No companies found matching your filters"
         />
       </div>
 
@@ -320,7 +255,13 @@ function CompaniesPageContent() {
 
 export default function CompaniesPage() {
   return (
-    <Suspense fallback={<div className="p-6">Loading...</div>}>
+    <Suspense
+      fallback={
+        <div className="p-6">
+          <Skeleton className="h-96 w-full" />
+        </div>
+      }
+    >
       <CompaniesPageContent />
     </Suspense>
   );

@@ -6,6 +6,7 @@ import { Header } from "@/components/layout/header";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
   Table,
   TableBody,
@@ -107,8 +108,12 @@ export default function CertificationsPage() {
       const data = await res.json();
       const people = data.data || [];
       // Filter out people who already have certifications
-      const certifiedPersonIds = new Set(certifications.map((c) => c.person_id));
-      const availablePeople = people.filter((p) => !certifiedPersonIds.has(p.id));
+      const certifiedPersonIds = new Set(
+        certifications.map((c) => c.person_id)
+      );
+      const availablePeople = people.filter(
+        (p) => !certifiedPersonIds.has(p.id)
+      );
       setAllPeople(availablePeople);
     } catch (error) {
       console.error("Error fetching people:", error);
@@ -215,7 +220,7 @@ export default function CertificationsPage() {
         {
           method: "POST",
           body: formData,
-        },
+        }
       );
       if (!res.ok) throw new Error("Failed to upload file");
       toast({ title: "File uploaded successfully" });
@@ -319,7 +324,13 @@ export default function CertificationsPage() {
         {/* Mobile Card View */}
         <div className="block md:hidden space-y-4">
           {loading ? (
-            <div className="text-center py-8">Loading...</div>
+            Array.from({ length: 3 }).map((_, i) => (
+              <Card key={i}>
+                <CardContent className="pt-4">
+                  <Skeleton className="h-16 w-full" />
+                </CardContent>
+              </Card>
+            ))
           ) : certifications.length === 0 ? (
             <div className="text-center py-8 text-muted-foreground">
               No certifications found
@@ -398,11 +409,13 @@ export default function CertificationsPage() {
             </TableHeader>
             <TableBody>
               {loading ? (
-                <TableRow>
-                  <TableCell colSpan={6} className="text-center py-8">
-                    Loading...
-                  </TableCell>
-                </TableRow>
+                Array.from({ length: 5 }).map((_, i) => (
+                  <TableRow key={i}>
+                    <TableCell colSpan={6}>
+                      <Skeleton className="h-8 w-full" />
+                    </TableCell>
+                  </TableRow>
+                ))
               ) : certifications.length === 0 ? (
                 <TableRow>
                   <TableCell
@@ -480,7 +493,7 @@ export default function CertificationsPage() {
                             onClick={() =>
                               handleToggleTraining(
                                 cert.id,
-                                cert.training_complete,
+                                cert.training_complete
                               )
                             }
                           >
@@ -603,7 +616,10 @@ export default function CertificationsPage() {
               <Select
                 value={newCertData.background_check_status}
                 onValueChange={(value) =>
-                  setNewCertData({ ...newCertData, background_check_status: value })
+                  setNewCertData({
+                    ...newCertData,
+                    background_check_status: value,
+                  })
                 }
               >
                 <SelectTrigger className="w-full">
@@ -622,7 +638,10 @@ export default function CertificationsPage() {
                 id="add-cert-application"
                 checked={newCertData.application_received}
                 onCheckedChange={(checked) =>
-                  setNewCertData({ ...newCertData, application_received: checked })
+                  setNewCertData({
+                    ...newCertData,
+                    application_received: checked,
+                  })
                 }
               />
               <Label htmlFor="add-cert-application">Application Received</Label>
@@ -647,8 +666,8 @@ export default function CertificationsPage() {
             >
               Cancel
             </Button>
-            <Button 
-              onClick={handleCreateCertification} 
+            <Button
+              onClick={handleCreateCertification}
               disabled={creatingCert}
               className="w-full sm:w-auto"
             >

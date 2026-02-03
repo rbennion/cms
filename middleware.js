@@ -2,7 +2,14 @@ import { auth } from "@/lib/auth";
 import { NextResponse } from "next/server";
 
 // Routes that don't require authentication
-const publicRoutes = ["/login", "/register", "/forgot-password", "/reset-password", "/api/auth"];
+const publicRoutes = [
+  "/login",
+  "/register",
+  "/forgot-password",
+  "/reset-password",
+  "/api/auth",
+  "/api/settings/logo",
+];
 
 // Routes that require admin access
 const adminRoutes = ["/settings/users"];

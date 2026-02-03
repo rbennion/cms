@@ -13,6 +13,13 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { MultiSelectSearch } from "@/components/ui/multi-select-search";
 import { NotesList } from "@/components/notes/notes-list";
 import { ConfirmDialog } from "@/components/shared/confirm-dialog";
@@ -38,7 +45,9 @@ import {
   Save,
   X,
   Plus,
-  Tag,
+  Users,
+  TrendingUp,
+  ArrowLeft,
 } from "lucide-react";
 
 export default function PersonDetailPage() {
@@ -58,10 +67,12 @@ export default function PersonDetailPage() {
   });
   const [allCompanies, setAllCompanies] = useState([]);
   const [allSchools, setAllSchools] = useState([]);
-  const [allTypes, setAllTypes] = useState([]);
+  const [allRoles, setAllRoles] = useState([]);
+  const [allStages, setAllStages] = useState([]);
   const [showCompanyAdd, setShowCompanyAdd] = useState(false);
   const [showSchoolAdd, setShowSchoolAdd] = useState(false);
-  const [showTypeEdit, setShowTypeEdit] = useState(false);
+  const [showRoleEdit, setShowRoleEdit] = useState(false);
+  const [showStageEdit, setShowStageEdit] = useState(false);
   const [showNewCompanyDialog, setShowNewCompanyDialog] = useState(false);
   const [newCompanyData, setNewCompanyData] = useState({
     name: "",
@@ -73,6 +84,12 @@ export default function PersonDetailPage() {
     is_donor: false,
   });
   const [savingNewCompany, setSavingNewCompany] = useState(false);
+  const [isEditingCertification, setIsEditingCertification] = useState(false);
+  const [certificationData, setCertificationData] = useState({
+    background_check_status: "pending",
+    application_received: false,
+    training_complete: false,
+  });
 
   useEffect(() => {
     fetchPerson();
@@ -81,17 +98,22 @@ export default function PersonDetailPage() {
 
   const fetchOptions = async () => {
     try {
-      const [companiesRes, schoolsRes, typesRes] = await Promise.all([
-        fetch("/api/companies?limit=1000"),
-        fetch("/api/schools"),
-        fetch("/api/person-types"),
-      ]);
+      const [companiesRes, schoolsRes, rolesRes, stagesRes] = await Promise.all(
+        [
+          fetch("/api/companies?limit=1000"),
+          fetch("/api/schools"),
+          fetch("/api/roles"),
+          fetch("/api/engagement-stages"),
+        ]
+      );
       const companiesData = await companiesRes.json();
       const schoolsData = await schoolsRes.json();
-      const typesData = await typesRes.json();
+      const rolesData = await rolesRes.json();
+      const stagesData = await stagesRes.json();
       setAllCompanies(companiesData.data || companiesData || []);
       setAllSchools(Array.isArray(schoolsData) ? schoolsData : []);
-      setAllTypes(Array.isArray(typesData) ? typesData : []);
+      setAllRoles(Array.isArray(rolesData) ? rolesData : []);
+      setAllStages(Array.isArray(stagesData) ? stagesData : []);
     } catch (error) {
       console.error("Error fetching options:", error);
     }
@@ -258,21 +280,21 @@ export default function PersonDetailPage() {
     }
   };
 
-  const handleToggleType = async (typeId) => {
+  const handleToggleRole = async (roleId) => {
     try {
-      const currentTypeIds = person.types?.map((t) => t.id) || [];
-      const isSelected = currentTypeIds.includes(typeId);
-      const newTypeIds = isSelected
-        ? currentTypeIds.filter((id) => id !== typeId)
-        : [...currentTypeIds, typeId];
-      
+      const currentRoleIds = person.roles?.map((r) => r.id) || [];
+      const isSelected = currentRoleIds.includes(roleId);
+      const newRoleIds = isSelected
+        ? currentRoleIds.filter((id) => id !== roleId)
+        : [...currentRoleIds, roleId];
+
       const res = await fetch(`/api/people/${params.id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ type_ids: newTypeIds }),
+        body: JSON.stringify({ role_ids: newRoleIds }),
       });
-      if (!res.ok) throw new Error("Failed to update types");
-      toast({ title: "Types updated successfully" });
+      if (!res.ok) throw new Error("Failed to update roles");
+      toast({ title: "Roles updated successfully" });
       fetchPerson();
     } catch (error) {
       toast({
@@ -281,6 +303,83 @@ export default function PersonDetailPage() {
         variant: "destructive",
       });
     }
+  };
+
+  const handleStageChange = async (stageId) => {
+    try {
+      const res = await fetch(`/api/people/${params.id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          stage_id: stageId === "_none" ? null : parseInt(stageId),
+        }),
+      });
+      if (!res.ok) throw new Error("Failed to update stage");
+      toast({ title: "Stage updated successfully" });
+      setShowStageEdit(false);
+      fetchPerson();
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleSaveCertification = async () => {
+    try {
+      if (person.certification) {
+        // Update existing certification
+        const res = await fetch(
+          `/api/certifications/${person.certification.id}`,
+          {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(certificationData),
+          }
+        );
+        if (!res.ok) throw new Error("Failed to update certification");
+      } else {
+        // Create new certification
+        const res = await fetch("/api/certifications", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            person_id: person.id,
+            ...certificationData,
+          }),
+        });
+        if (!res.ok) throw new Error("Failed to create certification");
+      }
+      toast({ title: "Certification updated successfully" });
+      setIsEditingCertification(false);
+      fetchPerson();
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleStartEditCertification = () => {
+    if (person.certification) {
+      setCertificationData({
+        background_check_status:
+          person.certification.background_check_status || "pending",
+        application_received: !!person.certification.application_received,
+        training_complete: !!person.certification.training_complete,
+      });
+    } else {
+      setCertificationData({
+        background_check_status: "pending",
+        application_received: false,
+        training_complete: false,
+      });
+    }
+    setIsEditingCertification(true);
   };
 
   const handleCreateNewCompany = async () => {
@@ -305,7 +404,7 @@ export default function PersonDetailPage() {
         throw new Error(error.error || "Failed to create company");
       }
       const newCompany = await res.json();
-      
+
       // Add the new company to this person
       const currentCompanyIds = person.companies?.map((c) => c.id) || [];
       const addRes = await fetch(`/api/people/${params.id}`, {
@@ -363,16 +462,32 @@ export default function PersonDetailPage() {
         title={`${person.first_name} ${person.last_name}`}
         description={person.title}
       >
-        <Button variant="destructive" onClick={() => setShowDelete(true)}>
-          <Trash2 className="mr-2 h-4 w-4" />
-          Delete
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={() => setShowDelete(true)}
+          className="text-muted-foreground hover:text-destructive"
+        >
+          <Trash2 className="h-4 w-4" />
         </Button>
       </Header>
 
       <div className="p-6">
+        <div className="mb-6">
+          <Button variant="ghost" size="sm" asChild>
+            <Link href="/people">
+              <ArrowLeft className="h-4 w-4 mr-2" />
+              Back to People
+            </Link>
+          </Button>
+        </div>
         <div className="grid gap-6 lg:grid-cols-3">
           {/* Profile Card */}
-          <Card className="md:col-span-1">
+          <Card
+            className={`lg:col-span-1 ${
+              isEditingProfile ? "ring-2 ring-primary/20" : ""
+            }`}
+          >
             <CardHeader className="flex flex-row items-center justify-between pb-3">
               <CardTitle className="text-base">Contact Information</CardTitle>
               {!isEditingProfile ? (
@@ -416,16 +531,48 @@ export default function PersonDetailPage() {
                   {person.is_fc_certified ? (
                     <Badge variant="info">FC Certified</Badge>
                   ) : null}
-                  {person.is_board_member ? <Badge>Board Member</Badge> : null}
                 </div>
 
-                {person.types?.length > 0 && (
-                  <div className="mt-4 flex flex-wrap justify-center gap-2">
-                    {person.types.map((type) => (
-                      <Badge key={type.id} variant="secondary">
-                        {type.name}
-                      </Badge>
-                    ))}
+                {person.stage && (
+                  <div className="mt-3">
+                    {(() => {
+                      const stage = person.stage.name.toLowerCase();
+                      let variant = "secondary";
+                      if (stage === "lead") variant = "warning";
+                      else if (stage === "prospect") variant = "info";
+                      else if (stage === "active") variant = "success";
+                      return (
+                        <Badge variant={variant}>{person.stage.name}</Badge>
+                      );
+                    })()}
+                  </div>
+                )}
+
+                {person.roles?.length > 0 && (
+                  <div className="mt-3 flex flex-wrap justify-center gap-2">
+                    {person.roles.map((role) => {
+                      const getRoleVariant = (name) => {
+                        const n = name.toLowerCase();
+                        if (n.includes("board")) return "purple";
+                        if (n.includes("volunteer")) return "teal";
+                        if (n.includes("parent")) return "pink";
+                        if (n.includes("fc leader")) return "indigo";
+                        if (n.includes("potential")) return "warning";
+                        if (n.includes("vendor")) return "orange";
+                        if (n.includes("partner")) return "cyan";
+                        if (n.includes("staff")) return "info";
+                        if (n.includes("teacher")) return "rose";
+                        return "secondary";
+                      };
+                      return (
+                        <Badge
+                          key={role.id}
+                          variant={getRoleVariant(role.name)}
+                        >
+                          {role.name}
+                        </Badge>
+                      );
+                    })}
                   </div>
                 )}
               </div>
@@ -569,55 +716,135 @@ export default function PersonDetailPage() {
 
           {/* Details Section */}
           <div className="lg:col-span-2 space-y-6">
-            {/* Types Card */}
+            {/* Roles Card */}
             <Card>
               <CardHeader className="flex flex-row items-center justify-between">
                 <CardTitle className="flex items-center gap-2">
-                  <Tag className="h-5 w-5" />
-                  Types
+                  <Users className="h-5 w-5" />
+                  Roles
                 </CardTitle>
-                {!showTypeEdit ? (
-                  <Button size="sm" variant="ghost" onClick={() => setShowTypeEdit(true)}>
+                {!showRoleEdit ? (
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={() => setShowRoleEdit(true)}
+                  >
                     <Pencil className="h-4 w-4" />
                   </Button>
                 ) : (
-                  <Button size="sm" variant="ghost" onClick={() => setShowTypeEdit(false)}>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={() => setShowRoleEdit(false)}
+                  >
                     <X className="h-4 w-4" />
                   </Button>
                 )}
               </CardHeader>
               <CardContent>
-                {showTypeEdit ? (
+                <p className="text-sm text-muted-foreground mb-3">
+                  What is this person's relationship with your organization?
+                </p>
+                {showRoleEdit ? (
                   <div className="flex flex-wrap gap-3">
-                    {allTypes.map((type) => {
-                      const isSelected = person.types?.some((t) => t.id === type.id);
+                    {allRoles.map((role) => {
+                      const isSelected = person.roles?.some(
+                        (r) => r.id === role.id
+                      );
                       return (
-                        <div key={type.id} className="flex items-center space-x-2">
+                        <div
+                          key={role.id}
+                          className="flex items-center space-x-2"
+                        >
                           <Checkbox
-                            id={`type-edit-${type.id}`}
+                            id={`role-edit-${role.id}`}
                             checked={isSelected}
-                            onCheckedChange={() => handleToggleType(type.id)}
+                            onCheckedChange={() => handleToggleRole(role.id)}
                           />
-                          <Label htmlFor={`type-edit-${type.id}`}>{type.name}</Label>
+                          <Label htmlFor={`role-edit-${role.id}`}>
+                            {role.name}
+                          </Label>
                         </div>
                       );
                     })}
-                    {allTypes.length === 0 && (
+                    {allRoles.length === 0 && (
                       <p className="text-muted-foreground text-sm">
-                        No types available. Create types in Settings.
+                        No roles available. Create roles in Settings.
                       </p>
                     )}
                   </div>
                 ) : (
                   <div className="flex flex-wrap gap-2">
-                    {person.types?.length > 0 ? (
-                      person.types.map((type) => (
-                        <Badge key={type.id} variant="secondary">
-                          {type.name}
+                    {person.roles?.length > 0 ? (
+                      person.roles.map((role) => (
+                        <Badge key={role.id} variant="outline">
+                          {role.name}
                         </Badge>
                       ))
                     ) : (
-                      <p className="text-muted-foreground text-sm">No types assigned</p>
+                      <p className="text-muted-foreground text-sm">
+                        No roles assigned
+                      </p>
+                    )}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* Engagement Stage Card */}
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between">
+                <CardTitle className="flex items-center gap-2">
+                  <TrendingUp className="h-5 w-5" />
+                  Engagement Stage
+                </CardTitle>
+                {!showStageEdit ? (
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={() => setShowStageEdit(true)}
+                  >
+                    <Pencil className="h-4 w-4" />
+                  </Button>
+                ) : (
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={() => setShowStageEdit(false)}
+                  >
+                    <X className="h-4 w-4" />
+                  </Button>
+                )}
+              </CardHeader>
+              <CardContent>
+                <p className="text-sm text-muted-foreground mb-3">
+                  Where is this person in your engagement pipeline?
+                </p>
+                {showStageEdit ? (
+                  <Select
+                    value={person.stage_id?.toString() || "_none"}
+                    onValueChange={handleStageChange}
+                  >
+                    <SelectTrigger className="w-64">
+                      <SelectValue placeholder="Select a stage" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="_none">No stage selected</SelectItem>
+                      {allStages.map((stage) => (
+                        <SelectItem key={stage.id} value={stage.id.toString()}>
+                          {stage.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                ) : (
+                  <div>
+                    {person.stage ? (
+                      <Badge variant="secondary">{person.stage.name}</Badge>
+                    ) : (
+                      <p className="text-muted-foreground text-sm">
+                        No stage selected
+                      </p>
                     )}
                   </div>
                 )}
@@ -647,7 +874,8 @@ export default function PersonDetailPage() {
                       <div className="flex-1">
                         <MultiSelectSearch
                           options={allCompanies.filter(
-                            (c) => !person.companies?.some((pc) => pc.id === c.id)
+                            (c) =>
+                              !person.companies?.some((pc) => pc.id === c.id)
                           )}
                           selected={[]}
                           onChange={(selected) => {
@@ -851,16 +1079,95 @@ export default function PersonDetailPage() {
             )}
 
             {/* Certification Card */}
-            {person.is_fc_certified && (
+            {(person.is_fc_certified || person.certification) && (
               <Card>
-                <CardHeader>
+                <CardHeader className="flex flex-row items-center justify-between">
                   <CardTitle className="flex items-center gap-2">
                     <Award className="h-5 w-5" />
                     Certification Status
                   </CardTitle>
+                  {!isEditingCertification ? (
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={handleStartEditCertification}
+                    >
+                      <Pencil className="h-4 w-4" />
+                    </Button>
+                  ) : (
+                    <div className="flex gap-1">
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={handleSaveCertification}
+                      >
+                        <Save className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => setIsEditingCertification(false)}
+                      >
+                        <X className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  )}
                 </CardHeader>
                 <CardContent>
-                  {person.certification ? (
+                  {isEditingCertification ? (
+                    <div className="space-y-4">
+                      <div className="space-y-2">
+                        <Label>Background Check Status</Label>
+                        <Select
+                          value={certificationData.background_check_status}
+                          onValueChange={(value) =>
+                            setCertificationData({
+                              ...certificationData,
+                              background_check_status: value,
+                            })
+                          }
+                        >
+                          <SelectTrigger>
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="pending">Pending</SelectItem>
+                            <SelectItem value="approved">Approved</SelectItem>
+                            <SelectItem value="denied">Denied</SelectItem>
+                            <SelectItem value="expired">Expired</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <Checkbox
+                          id="cert-app-received"
+                          checked={certificationData.application_received}
+                          onCheckedChange={(checked) =>
+                            setCertificationData({
+                              ...certificationData,
+                              application_received: checked,
+                            })
+                          }
+                        />
+                        <Label htmlFor="cert-app-received">
+                          Application Received
+                        </Label>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <Checkbox
+                          id="cert-training"
+                          checked={certificationData.training_complete}
+                          onCheckedChange={(checked) =>
+                            setCertificationData({
+                              ...certificationData,
+                              training_complete: checked,
+                            })
+                          }
+                        />
+                        <Label htmlFor="cert-training">Training Complete</Label>
+                      </div>
+                    </div>
+                  ) : person.certification ? (
                     <div className="space-y-3">
                       <div className="flex items-center justify-between p-3 border rounded-lg">
                         <span>Background Check</span>
@@ -913,7 +1220,14 @@ export default function PersonDetailPage() {
                     </div>
                   ) : (
                     <p className="text-muted-foreground text-center py-4">
-                      No certification record
+                      No certification record.{" "}
+                      <Button
+                        variant="link"
+                        className="p-0 h-auto"
+                        onClick={handleStartEditCertification}
+                      >
+                        Add one
+                      </Button>
                     </p>
                   )}
                 </CardContent>
@@ -943,7 +1257,10 @@ export default function PersonDetailPage() {
       />
 
       {/* New Company Dialog */}
-      <Dialog open={showNewCompanyDialog} onOpenChange={setShowNewCompanyDialog}>
+      <Dialog
+        open={showNewCompanyDialog}
+        onOpenChange={setShowNewCompanyDialog}
+      >
         <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Create New Company</DialogTitle>
@@ -967,7 +1284,10 @@ export default function PersonDetailPage() {
                 type="url"
                 value={newCompanyData.website}
                 onChange={(e) =>
-                  setNewCompanyData({ ...newCompanyData, website: e.target.value })
+                  setNewCompanyData({
+                    ...newCompanyData,
+                    website: e.target.value,
+                  })
                 }
                 placeholder="https://"
               />
@@ -978,7 +1298,10 @@ export default function PersonDetailPage() {
                 id="new-company-address"
                 value={newCompanyData.address}
                 onChange={(e) =>
-                  setNewCompanyData({ ...newCompanyData, address: e.target.value })
+                  setNewCompanyData({
+                    ...newCompanyData,
+                    address: e.target.value,
+                  })
                 }
               />
             </div>
@@ -989,7 +1312,10 @@ export default function PersonDetailPage() {
                   id="new-company-city"
                   value={newCompanyData.city}
                   onChange={(e) =>
-                    setNewCompanyData({ ...newCompanyData, city: e.target.value })
+                    setNewCompanyData({
+                      ...newCompanyData,
+                      city: e.target.value,
+                    })
                   }
                 />
               </div>
@@ -999,7 +1325,10 @@ export default function PersonDetailPage() {
                   id="new-company-state"
                   value={newCompanyData.state}
                   onChange={(e) =>
-                    setNewCompanyData({ ...newCompanyData, state: e.target.value })
+                    setNewCompanyData({
+                      ...newCompanyData,
+                      state: e.target.value,
+                    })
                   }
                 />
               </div>
@@ -1009,7 +1338,10 @@ export default function PersonDetailPage() {
                   id="new-company-zip"
                   value={newCompanyData.zip}
                   onChange={(e) =>
-                    setNewCompanyData({ ...newCompanyData, zip: e.target.value })
+                    setNewCompanyData({
+                      ...newCompanyData,
+                      zip: e.target.value,
+                    })
                   }
                 />
               </div>
@@ -1034,8 +1366,8 @@ export default function PersonDetailPage() {
             >
               Cancel
             </Button>
-            <Button 
-              onClick={handleCreateNewCompany} 
+            <Button
+              onClick={handleCreateNewCompany}
               disabled={savingNewCompany}
               className="w-full sm:w-auto"
             >
