@@ -2,6 +2,7 @@ import "./globals.css";
 import { Sidebar } from "@/components/layout/sidebar";
 import { Toaster } from "@/components/ui/toaster";
 import { SessionProvider } from "@/components/providers/session-provider";
+import { MainContent } from "@/components/layout/main-content";
 
 export const metadata = {
   title: "Fight Club CRM",
@@ -15,7 +16,7 @@ export default function RootLayout({ children }) {
         <SessionProvider>
           <div className="flex min-h-screen">
             <Sidebar />
-            <main className="flex-1 pl-64">{children}</main>
+            <MainContent>{children}</MainContent>
           </div>
           <Toaster />
         </SessionProvider>
