@@ -96,24 +96,53 @@ export async function PUT(request, { params }) {
       school_ids
     } = body
 
-    if (!first_name || !last_name) {
-      return NextResponse.json({ error: 'First name and last name are required' }, { status: 400 })
-    }
-
     const existing = await get('SELECT * FROM people WHERE id = ?', [id])
     if (!existing) {
       return NextResponse.json({ error: 'Person not found' }, { status: 404 })
     }
 
-    await run(
-      `UPDATE people SET
-        first_name = ?, middle_name = ?, last_name = ?, email = ?, phone = ?,
-        title = ?, address = ?, city = ?, state = ?, zip = ?,
-        is_donor = ?, is_fc_certified = ?, is_board_member = ?, children = ?,
-        updated_at = CURRENT_TIMESTAMP
-       WHERE id = ?`,
-      [first_name, middle_name || null, last_name, email || null, phone || null, title || null, address || null, city || null, state || null, zip || null, is_donor ? 1 : 0, is_fc_certified ? 1 : 0, is_board_member ? 1 : 0, children || null, id]
-    )
+    // Only validate name fields if they are being updated
+    const hasPersonFields = first_name !== undefined || last_name !== undefined || 
+      middle_name !== undefined || email !== undefined || phone !== undefined ||
+      title !== undefined || address !== undefined || city !== undefined ||
+      state !== undefined || zip !== undefined || is_donor !== undefined ||
+      is_fc_certified !== undefined || is_board_member !== undefined || children !== undefined
+
+    if (hasPersonFields) {
+      // Use existing values as defaults for partial updates
+      const updatedFirstName = first_name !== undefined ? first_name : existing.first_name
+      const updatedLastName = last_name !== undefined ? last_name : existing.last_name
+
+      if (!updatedFirstName || !updatedLastName) {
+        return NextResponse.json({ error: 'First name and last name are required' }, { status: 400 })
+      }
+
+      await run(
+        `UPDATE people SET
+          first_name = ?, middle_name = ?, last_name = ?, email = ?, phone = ?,
+          title = ?, address = ?, city = ?, state = ?, zip = ?,
+          is_donor = ?, is_fc_certified = ?, is_board_member = ?, children = ?,
+          updated_at = CURRENT_TIMESTAMP
+         WHERE id = ?`,
+        [
+          updatedFirstName,
+          middle_name !== undefined ? (middle_name || null) : existing.middle_name,
+          updatedLastName,
+          email !== undefined ? (email || null) : existing.email,
+          phone !== undefined ? (phone || null) : existing.phone,
+          title !== undefined ? (title || null) : existing.title,
+          address !== undefined ? (address || null) : existing.address,
+          city !== undefined ? (city || null) : existing.city,
+          state !== undefined ? (state || null) : existing.state,
+          zip !== undefined ? (zip || null) : existing.zip,
+          is_donor !== undefined ? (is_donor ? 1 : 0) : existing.is_donor,
+          is_fc_certified !== undefined ? (is_fc_certified ? 1 : 0) : existing.is_fc_certified,
+          is_board_member !== undefined ? (is_board_member ? 1 : 0) : existing.is_board_member,
+          children !== undefined ? (children || null) : existing.children,
+          id
+        ]
+      )
+    }
 
     // Update company associations
     if (company_ids !== undefined) {
@@ -155,7 +184,8 @@ export async function PUT(request, { params }) {
     }
 
     // Handle certification status change
-    if (is_fc_certified && !existing.is_fc_certified) {
+    const newIsFcCertified = is_fc_certified !== undefined ? is_fc_certified : existing.is_fc_certified
+    if (newIsFcCertified && !existing.is_fc_certified) {
       // Newly certified - create certification record
       const existingCert = await get('SELECT * FROM certifications WHERE person_id = ?', [id])
       if (!existingCert) {

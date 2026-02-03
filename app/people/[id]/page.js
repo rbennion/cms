@@ -12,9 +12,17 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Checkbox } from "@/components/ui/checkbox";
 import { MultiSelectSearch } from "@/components/ui/multi-select-search";
 import { NotesList } from "@/components/notes/notes-list";
 import { ConfirmDialog } from "@/components/shared/confirm-dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
 import { useToast } from "@/components/ui/use-toast";
 import { formatCurrency, formatDate } from "@/lib/utils";
 import {
@@ -29,6 +37,8 @@ import {
   Award,
   Save,
   X,
+  Plus,
+  Tag,
 } from "lucide-react";
 
 export default function PersonDetailPage() {
@@ -48,8 +58,21 @@ export default function PersonDetailPage() {
   });
   const [allCompanies, setAllCompanies] = useState([]);
   const [allSchools, setAllSchools] = useState([]);
+  const [allTypes, setAllTypes] = useState([]);
   const [showCompanyAdd, setShowCompanyAdd] = useState(false);
   const [showSchoolAdd, setShowSchoolAdd] = useState(false);
+  const [showTypeEdit, setShowTypeEdit] = useState(false);
+  const [showNewCompanyDialog, setShowNewCompanyDialog] = useState(false);
+  const [newCompanyData, setNewCompanyData] = useState({
+    name: "",
+    address: "",
+    city: "",
+    state: "",
+    zip: "",
+    website: "",
+    is_donor: false,
+  });
+  const [savingNewCompany, setSavingNewCompany] = useState(false);
 
   useEffect(() => {
     fetchPerson();
@@ -58,14 +81,17 @@ export default function PersonDetailPage() {
 
   const fetchOptions = async () => {
     try {
-      const [companiesRes, schoolsRes] = await Promise.all([
+      const [companiesRes, schoolsRes, typesRes] = await Promise.all([
         fetch("/api/companies?limit=1000"),
         fetch("/api/schools"),
+        fetch("/api/person-types"),
       ]);
       const companiesData = await companiesRes.json();
       const schoolsData = await schoolsRes.json();
+      const typesData = await typesRes.json();
       setAllCompanies(companiesData.data || companiesData || []);
       setAllSchools(Array.isArray(schoolsData) ? schoolsData : []);
+      setAllTypes(Array.isArray(typesData) ? typesData : []);
     } catch (error) {
       console.error("Error fetching options:", error);
     }
@@ -229,6 +255,89 @@ export default function PersonDetailPage() {
         description: error.message,
         variant: "destructive",
       });
+    }
+  };
+
+  const handleToggleType = async (typeId) => {
+    try {
+      const currentTypeIds = person.types?.map((t) => t.id) || [];
+      const isSelected = currentTypeIds.includes(typeId);
+      const newTypeIds = isSelected
+        ? currentTypeIds.filter((id) => id !== typeId)
+        : [...currentTypeIds, typeId];
+      
+      const res = await fetch(`/api/people/${params.id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ type_ids: newTypeIds }),
+      });
+      if (!res.ok) throw new Error("Failed to update types");
+      toast({ title: "Types updated successfully" });
+      fetchPerson();
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleCreateNewCompany = async () => {
+    if (!newCompanyData.name.trim()) {
+      toast({
+        title: "Error",
+        description: "Company name is required",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setSavingNewCompany(true);
+    try {
+      const res = await fetch("/api/companies", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(newCompanyData),
+      });
+      if (!res.ok) {
+        const error = await res.json();
+        throw new Error(error.error || "Failed to create company");
+      }
+      const newCompany = await res.json();
+      
+      // Add the new company to this person
+      const currentCompanyIds = person.companies?.map((c) => c.id) || [];
+      const addRes = await fetch(`/api/people/${params.id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          company_ids: [...currentCompanyIds, newCompany.id],
+        }),
+      });
+      if (!addRes.ok) throw new Error("Failed to add company to person");
+
+      toast({ title: "Company created and added successfully" });
+      setShowNewCompanyDialog(false);
+      setNewCompanyData({
+        name: "",
+        address: "",
+        city: "",
+        state: "",
+        zip: "",
+        website: "",
+        is_donor: false,
+      });
+      fetchOptions();
+      fetchPerson();
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    } finally {
+      setSavingNewCompany(false);
     }
   };
 
@@ -460,6 +569,61 @@ export default function PersonDetailPage() {
 
           {/* Details Section */}
           <div className="lg:col-span-2 space-y-6">
+            {/* Types Card */}
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between">
+                <CardTitle className="flex items-center gap-2">
+                  <Tag className="h-5 w-5" />
+                  Types
+                </CardTitle>
+                {!showTypeEdit ? (
+                  <Button size="sm" variant="ghost" onClick={() => setShowTypeEdit(true)}>
+                    <Pencil className="h-4 w-4" />
+                  </Button>
+                ) : (
+                  <Button size="sm" variant="ghost" onClick={() => setShowTypeEdit(false)}>
+                    <X className="h-4 w-4" />
+                  </Button>
+                )}
+              </CardHeader>
+              <CardContent>
+                {showTypeEdit ? (
+                  <div className="flex flex-wrap gap-3">
+                    {allTypes.map((type) => {
+                      const isSelected = person.types?.some((t) => t.id === type.id);
+                      return (
+                        <div key={type.id} className="flex items-center space-x-2">
+                          <Checkbox
+                            id={`type-edit-${type.id}`}
+                            checked={isSelected}
+                            onCheckedChange={() => handleToggleType(type.id)}
+                          />
+                          <Label htmlFor={`type-edit-${type.id}`}>{type.name}</Label>
+                        </div>
+                      );
+                    })}
+                    {allTypes.length === 0 && (
+                      <p className="text-muted-foreground text-sm">
+                        No types available. Create types in Settings.
+                      </p>
+                    )}
+                  </div>
+                ) : (
+                  <div className="flex flex-wrap gap-2">
+                    {person.types?.length > 0 ? (
+                      person.types.map((type) => (
+                        <Badge key={type.id} variant="secondary">
+                          {type.name}
+                        </Badge>
+                      ))
+                    ) : (
+                      <p className="text-muted-foreground text-sm">No types assigned</p>
+                    )}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
             {/* Companies Card */}
             <Card>
               <CardHeader className="flex flex-row items-center justify-between">
@@ -477,7 +641,7 @@ export default function PersonDetailPage() {
                 {showCompanyAdd && (
                   <div className="mb-4 p-3 border rounded-lg bg-muted/50">
                     <Label className="text-xs mb-2 block">
-                      Search and select company
+                      Search and select company or create new
                     </Label>
                     <div className="flex gap-2">
                       <MultiSelectSearch
@@ -494,6 +658,14 @@ export default function PersonDetailPage() {
                         renderOption={(c) => c.name}
                         singleSelect
                       />
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => setShowNewCompanyDialog(true)}
+                        title="Create new company"
+                      >
+                        <Plus className="h-4 w-4" />
+                      </Button>
                       <Button
                         size="sm"
                         variant="ghost"
@@ -760,6 +932,104 @@ export default function PersonDetailPage() {
         confirmText="Delete"
         onConfirm={handleDelete}
       />
+
+      {/* New Company Dialog */}
+      <Dialog open={showNewCompanyDialog} onOpenChange={setShowNewCompanyDialog}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Create New Company</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="new-company-name">Company Name *</Label>
+              <Input
+                id="new-company-name"
+                value={newCompanyData.name}
+                onChange={(e) =>
+                  setNewCompanyData({ ...newCompanyData, name: e.target.value })
+                }
+                placeholder="Enter company name"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="new-company-website">Website</Label>
+              <Input
+                id="new-company-website"
+                type="url"
+                value={newCompanyData.website}
+                onChange={(e) =>
+                  setNewCompanyData({ ...newCompanyData, website: e.target.value })
+                }
+                placeholder="https://"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="new-company-address">Address</Label>
+              <Input
+                id="new-company-address"
+                value={newCompanyData.address}
+                onChange={(e) =>
+                  setNewCompanyData({ ...newCompanyData, address: e.target.value })
+                }
+              />
+            </div>
+            <div className="grid grid-cols-3 gap-2">
+              <div className="space-y-2">
+                <Label htmlFor="new-company-city">City</Label>
+                <Input
+                  id="new-company-city"
+                  value={newCompanyData.city}
+                  onChange={(e) =>
+                    setNewCompanyData({ ...newCompanyData, city: e.target.value })
+                  }
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="new-company-state">State</Label>
+                <Input
+                  id="new-company-state"
+                  value={newCompanyData.state}
+                  onChange={(e) =>
+                    setNewCompanyData({ ...newCompanyData, state: e.target.value })
+                  }
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="new-company-zip">ZIP</Label>
+                <Input
+                  id="new-company-zip"
+                  value={newCompanyData.zip}
+                  onChange={(e) =>
+                    setNewCompanyData({ ...newCompanyData, zip: e.target.value })
+                  }
+                />
+              </div>
+            </div>
+            <div className="flex items-center space-x-2">
+              <Checkbox
+                id="new-company-donor"
+                checked={newCompanyData.is_donor}
+                onCheckedChange={(checked) =>
+                  setNewCompanyData({ ...newCompanyData, is_donor: checked })
+                }
+              />
+              <Label htmlFor="new-company-donor">Donor Organization</Label>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setShowNewCompanyDialog(false)}
+              disabled={savingNewCompany}
+            >
+              Cancel
+            </Button>
+            <Button onClick={handleCreateNewCompany} disabled={savingNewCompany}>
+              {savingNewCompany ? "Creating..." : "Create Company"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
