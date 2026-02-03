@@ -1,8 +1,6 @@
 import { NextResponse } from "next/server";
 import { sql } from "@vercel/postgres";
 import { auth } from "@/lib/auth";
-import { writeFile, mkdir } from "fs/promises";
-import path from "path";
 
 export const dynamic = "force-dynamic";
 
@@ -84,20 +82,11 @@ export async function POST(request) {
     const bytes = await file.arrayBuffer();
     const buffer = Buffer.from(bytes);
 
-    // Create uploads directory if it doesn't exist
-    const uploadsDir = path.join(process.cwd(), "public", "uploads");
-    await mkdir(uploadsDir, { recursive: true });
+    // Convert to base64 data URL
+    const base64 = buffer.toString("base64");
+    const dataUrl = `data:${file.type};base64,${base64}`;
 
-    // Generate unique filename
-    const ext = file.name.split(".").pop();
-    const filename = `logo-${Date.now()}.${ext}`;
-    const filepath = path.join(uploadsDir, filename);
-
-    await writeFile(filepath, buffer);
-
-    const logoUrl = `/uploads/${filename}`;
-
-    // Ensure table exists and save logo URL to settings
+    // Ensure table exists and save logo as base64 data URL
     await sql`
       CREATE TABLE IF NOT EXISTS app_settings (
         id SERIAL PRIMARY KEY,
@@ -110,12 +99,12 @@ export async function POST(request) {
 
     await sql`
       INSERT INTO app_settings (key, value, updated_at)
-      VALUES ('logo_url', ${logoUrl}, CURRENT_TIMESTAMP)
+      VALUES ('logo_url', ${dataUrl}, CURRENT_TIMESTAMP)
       ON CONFLICT (key)
-      DO UPDATE SET value = ${logoUrl}, updated_at = CURRENT_TIMESTAMP
+      DO UPDATE SET value = ${dataUrl}, updated_at = CURRENT_TIMESTAMP
     `;
 
-    return NextResponse.json({ success: true, logo_url: logoUrl });
+    return NextResponse.json({ success: true, logo_url: dataUrl });
   } catch (error) {
     console.error("Error uploading logo:", error);
     return NextResponse.json(
