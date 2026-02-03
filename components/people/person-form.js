@@ -214,7 +214,7 @@ export function PersonForm({ person, isEdit = false }) {
         </CardHeader>
         <CardContent>
           <p className="text-sm text-muted-foreground mb-4">
-            What is this person's relationship with your organization?
+            What is this person&apos;s relationship with your organization?
           </p>
           <div className="flex flex-wrap gap-4">
             {roles.map((role) => (

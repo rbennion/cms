@@ -156,7 +156,7 @@ function SchoolsPageContent() {
           <div className="mb-4 flex flex-wrap items-center gap-2">
             <span className="text-sm text-muted-foreground">Active:</span>
             <Badge variant="secondary" className="gap-1">
-              Search: "{filters.search}"
+              Search: &quot;{filters.search}&quot;
               <button
                 onClick={() => handleFilterChange("search", "")}
                 className="ml-1 hover:text-destructive"

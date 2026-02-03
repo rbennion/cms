@@ -177,7 +177,9 @@ function CompaniesPageContent() {
             }
           >
             <SelectTrigger
-              className={`w-40 ${filters.is_donor ? "border-primary bg-primary/5" : ""}`}
+              className={`w-40 ${
+                filters.is_donor ? "border-primary bg-primary/5" : ""
+              }`}
             >
               <SelectValue placeholder="Donor Status" />
             </SelectTrigger>
@@ -195,7 +197,7 @@ function CompaniesPageContent() {
             <span className="text-sm text-muted-foreground">Active:</span>
             {filters.search && (
               <Badge variant="secondary" className="gap-1">
-                Search: "{filters.search}"
+                Search: &quot;{filters.search}&quot;
                 <button
                   onClick={() => handleFilterChange("search", "")}
                   className="ml-1 hover:text-destructive"

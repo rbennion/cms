@@ -245,7 +245,9 @@ function DonationsPageContent() {
             }
           >
             <SelectTrigger
-              className={`w-40 ${filters.donor_type ? "border-primary bg-primary/5" : ""}`}
+              className={`w-40 ${
+                filters.donor_type ? "border-primary bg-primary/5" : ""
+              }`}
             >
               <SelectValue placeholder="Donor Type" />
             </SelectTrigger>
@@ -260,13 +262,17 @@ function DonationsPageContent() {
             <span className="text-sm text-muted-foreground">Date range:</span>
             <DatePicker
               date={filters.start_date}
-              onDateChange={(date) => handleFilterChange("start_date", date || "")}
+              onDateChange={(date) =>
+                handleFilterChange("start_date", date || "")
+              }
               placeholder="From"
             />
             <span className="text-muted-foreground">-</span>
             <DatePicker
               date={filters.end_date}
-              onDateChange={(date) => handleFilterChange("end_date", date || "")}
+              onDateChange={(date) =>
+                handleFilterChange("end_date", date || "")
+              }
               placeholder="To"
             />
           </div>
@@ -278,7 +284,7 @@ function DonationsPageContent() {
             <span className="text-sm text-muted-foreground">Active:</span>
             {filters.search && (
               <Badge variant="secondary" className="gap-1">
-                Search: "{filters.search}"
+                Search: &quot;{filters.search}&quot;
                 <button
                   onClick={() => handleFilterChange("search", "")}
                   className="ml-1 hover:text-destructive"

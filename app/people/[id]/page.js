@@ -743,7 +743,8 @@ export default function PersonDetailPage() {
               </CardHeader>
               <CardContent>
                 <p className="text-sm text-muted-foreground mb-3">
-                  What is this person's relationship with your organization?
+                  What is this person&apos;s relationship with your
+                  organization?
                 </p>
                 {showRoleEdit ? (
                   <div className="flex flex-wrap gap-3">
