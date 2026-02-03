@@ -252,7 +252,7 @@ export default function CertificationsPage() {
 
       <div className="p-6">
         {/* Summary Cards */}
-        <div className="grid gap-4 md:grid-cols-4 mb-6">
+        <div className="grid gap-4 grid-cols-2 md:grid-cols-4 mb-6">
           {Object.entries(statusConfig).map(([status, config]) => {
             const IconComponent = config.icon;
             return (
@@ -274,7 +274,7 @@ export default function CertificationsPage() {
         </div>
 
         {/* Filters */}
-        <div className="mb-6 flex gap-4">
+        <div className="mb-6 flex flex-wrap gap-3">
           <Select
             value={filter.status || "all"}
             onValueChange={(value) =>
@@ -284,7 +284,7 @@ export default function CertificationsPage() {
               }))
             }
           >
-            <SelectTrigger className="w-40">
+            <SelectTrigger className="w-full sm:w-40">
               <SelectValue placeholder="All Statuses" />
             </SelectTrigger>
             <SelectContent>
@@ -305,7 +305,7 @@ export default function CertificationsPage() {
               }))
             }
           >
-            <SelectTrigger className="w-44">
+            <SelectTrigger className="w-full sm:w-44">
               <SelectValue placeholder="Training Status" />
             </SelectTrigger>
             <SelectContent>
@@ -316,12 +316,80 @@ export default function CertificationsPage() {
           </Select>
         </div>
 
-        <div className="rounded-md border">
+        {/* Mobile Card View */}
+        <div className="block md:hidden space-y-4">
+          {loading ? (
+            <div className="text-center py-8">Loading...</div>
+          ) : certifications.length === 0 ? (
+            <div className="text-center py-8 text-muted-foreground">
+              No certifications found
+            </div>
+          ) : (
+            certifications.map((cert) => {
+              const status = cert.background_check_status || "pending";
+              const config = statusConfig[status];
+              return (
+                <Card key={cert.id}>
+                  <CardContent className="pt-4">
+                    <div className="flex justify-between items-start mb-3">
+                      <div>
+                        <Link
+                          href={`/people/${cert.person_id}`}
+                          className="font-medium hover:underline"
+                        >
+                          {cert.first_name} {cert.last_name}
+                        </Link>
+                        {cert.email && (
+                          <div className="text-sm text-muted-foreground">
+                            {cert.email}
+                          </div>
+                        )}
+                      </div>
+                      <Button size="sm" variant="outline" asChild>
+                        <Link href={`/people/${cert.person_id}`}>View</Link>
+                      </Button>
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      <Badge
+                        variant={config.variant}
+                        className="cursor-pointer"
+                        onClick={() => setEditCert(cert)}
+                      >
+                        {config.label}
+                      </Badge>
+                      <Badge
+                        variant={
+                          cert.application_received ? "success" : "secondary"
+                        }
+                      >
+                        App: {cert.application_received ? "Yes" : "No"}
+                      </Badge>
+                      <Badge
+                        variant={
+                          cert.training_complete ? "success" : "secondary"
+                        }
+                        className="cursor-pointer"
+                        onClick={() =>
+                          handleToggleTraining(cert.id, cert.training_complete)
+                        }
+                      >
+                        Training: {cert.training_complete ? "Yes" : "No"}
+                      </Badge>
+                    </div>
+                  </CardContent>
+                </Card>
+              );
+            })
+          )}
+        </div>
+
+        {/* Desktop Table View */}
+        <div className="hidden md:block rounded-md border">
           <Table>
             <TableHeader>
               <TableRow>
                 <TableHead>Person</TableHead>
-                <TableHead>Contact</TableHead>
+                <TableHead className="hidden lg:table-cell">Contact</TableHead>
                 <TableHead>Background Check</TableHead>
                 <TableHead>Application</TableHead>
                 <TableHead>Training</TableHead>
@@ -358,7 +426,7 @@ export default function CertificationsPage() {
                           {cert.first_name} {cert.last_name}
                         </Link>
                       </TableCell>
-                      <TableCell>
+                      <TableCell className="hidden lg:table-cell">
                         <div className="text-sm">
                           {cert.email && <div>{cert.email}</div>}
                           {cert.phone && (
@@ -509,7 +577,7 @@ export default function CertificationsPage() {
 
       {/* Add Certification Dialog */}
       <Dialog open={showAddDialog} onOpenChange={setShowAddDialog}>
-        <DialogContent className="max-w-md">
+        <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Add Certification</DialogTitle>
           </DialogHeader>
@@ -538,7 +606,7 @@ export default function CertificationsPage() {
                   setNewCertData({ ...newCertData, background_check_status: value })
                 }
               >
-                <SelectTrigger>
+                <SelectTrigger className="w-full">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -570,15 +638,20 @@ export default function CertificationsPage() {
               <Label htmlFor="add-cert-training">Training Complete</Label>
             </div>
           </div>
-          <DialogFooter>
+          <DialogFooter className="flex-col sm:flex-row gap-2">
             <Button
               variant="outline"
               onClick={() => setShowAddDialog(false)}
               disabled={creatingCert}
+              className="w-full sm:w-auto"
             >
               Cancel
             </Button>
-            <Button onClick={handleCreateCertification} disabled={creatingCert}>
+            <Button 
+              onClick={handleCreateCertification} 
+              disabled={creatingCert}
+              className="w-full sm:w-auto"
+            >
               {creatingCert ? "Creating..." : "Create Certification"}
             </Button>
           </DialogFooter>

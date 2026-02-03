@@ -643,36 +643,42 @@ export default function PersonDetailPage() {
                     <Label className="text-xs mb-2 block">
                       Search and select company or create new
                     </Label>
-                    <div className="flex gap-2">
-                      <MultiSelectSearch
-                        options={allCompanies.filter(
-                          (c) => !person.companies?.some((pc) => pc.id === c.id)
-                        )}
-                        selected={[]}
-                        onChange={(selected) => {
-                          if (selected.length > 0) {
-                            handleAddCompany(selected[0]);
-                          }
-                        }}
-                        placeholder="Search companies..."
-                        renderOption={(c) => c.name}
-                        singleSelect
-                      />
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => setShowNewCompanyDialog(true)}
-                        title="Create new company"
-                      >
-                        <Plus className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        onClick={() => setShowCompanyAdd(false)}
-                      >
-                        <X className="h-4 w-4" />
-                      </Button>
+                    <div className="flex flex-col sm:flex-row gap-2">
+                      <div className="flex-1">
+                        <MultiSelectSearch
+                          options={allCompanies.filter(
+                            (c) => !person.companies?.some((pc) => pc.id === c.id)
+                          )}
+                          selected={[]}
+                          onChange={(selected) => {
+                            if (selected.length > 0) {
+                              handleAddCompany(selected[0]);
+                            }
+                          }}
+                          placeholder="Search companies..."
+                          renderOption={(c) => c.name}
+                          singleSelect
+                        />
+                      </div>
+                      <div className="flex gap-2 sm:flex-shrink-0">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => setShowNewCompanyDialog(true)}
+                          title="Create new company"
+                          className="flex-1 sm:flex-none"
+                        >
+                          <Plus className="h-4 w-4 mr-1 sm:mr-0" />
+                          <span className="sm:hidden">New</span>
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => setShowCompanyAdd(false)}
+                        >
+                          <X className="h-4 w-4" />
+                        </Button>
+                      </div>
                     </div>
                   </div>
                 )}
@@ -733,25 +739,28 @@ export default function PersonDetailPage() {
                     <Label className="text-xs mb-2 block">
                       Search and select school
                     </Label>
-                    <div className="flex gap-2">
-                      <MultiSelectSearch
-                        options={allSchools.filter(
-                          (s) => !person.schools?.some((ps) => ps.id === s.id)
-                        )}
-                        selected={[]}
-                        onChange={(selected) => {
-                          if (selected.length > 0) {
-                            handleAddSchool(selected[0]);
-                          }
-                        }}
-                        placeholder="Search schools..."
-                        renderOption={(s) => s.name}
-                        singleSelect
-                      />
+                    <div className="flex flex-col sm:flex-row gap-2">
+                      <div className="flex-1">
+                        <MultiSelectSearch
+                          options={allSchools.filter(
+                            (s) => !person.schools?.some((ps) => ps.id === s.id)
+                          )}
+                          selected={[]}
+                          onChange={(selected) => {
+                            if (selected.length > 0) {
+                              handleAddSchool(selected[0]);
+                            }
+                          }}
+                          placeholder="Search schools..."
+                          renderOption={(s) => s.name}
+                          singleSelect
+                        />
+                      </div>
                       <Button
                         size="sm"
                         variant="ghost"
                         onClick={() => setShowSchoolAdd(false)}
+                        className="self-end sm:self-auto"
                       >
                         <X className="h-4 w-4" />
                       </Button>
@@ -935,7 +944,7 @@ export default function PersonDetailPage() {
 
       {/* New Company Dialog */}
       <Dialog open={showNewCompanyDialog} onOpenChange={setShowNewCompanyDialog}>
-        <DialogContent className="max-w-md">
+        <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Create New Company</DialogTitle>
           </DialogHeader>
@@ -973,7 +982,7 @@ export default function PersonDetailPage() {
                 }
               />
             </div>
-            <div className="grid grid-cols-3 gap-2">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
               <div className="space-y-2">
                 <Label htmlFor="new-company-city">City</Label>
                 <Input
@@ -1016,15 +1025,20 @@ export default function PersonDetailPage() {
               <Label htmlFor="new-company-donor">Donor Organization</Label>
             </div>
           </div>
-          <DialogFooter>
+          <DialogFooter className="flex-col sm:flex-row gap-2">
             <Button
               variant="outline"
               onClick={() => setShowNewCompanyDialog(false)}
               disabled={savingNewCompany}
+              className="w-full sm:w-auto"
             >
               Cancel
             </Button>
-            <Button onClick={handleCreateNewCompany} disabled={savingNewCompany}>
+            <Button 
+              onClick={handleCreateNewCompany} 
+              disabled={savingNewCompany}
+              className="w-full sm:w-auto"
+            >
               {savingNewCompany ? "Creating..." : "Create Company"}
             </Button>
           </DialogFooter>
