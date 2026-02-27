@@ -5,7 +5,7 @@ export async function GET(request) {
   try {
     const { searchParams } = new URL(request.url)
     const backgroundCheckStatus = searchParams.get('background_check_status')
-    const trainingComplete = searchParams.get('training_complete')
+    const qprTraining = searchParams.get('qpr_gatekeeper_training')
 
     let query = `
       SELECT c.*, p.first_name, p.last_name, p.email, p.phone
@@ -20,9 +20,9 @@ export async function GET(request) {
       params.push(backgroundCheckStatus)
     }
 
-    if (trainingComplete !== null && trainingComplete !== undefined) {
-      query += ' AND c.training_complete = ?'
-      params.push(trainingComplete === 'true' ? 1 : 0)
+    if (qprTraining !== null && qprTraining !== undefined) {
+      query += ' AND c.qpr_gatekeeper_training = ?'
+      params.push(qprTraining === 'true' ? 1 : 0)
     }
 
     query += ' ORDER BY p.last_name, p.first_name'
@@ -39,7 +39,7 @@ export async function GET(request) {
 export async function POST(request) {
   try {
     const body = await request.json()
-    const { person_id, background_check_status, application_received, training_complete } = body
+    const { person_id, background_check_status, application_received, qpr_gatekeeper_training, qpr_training_date } = body
 
     if (!person_id) {
       return NextResponse.json({ error: 'Person ID is required' }, { status: 400 })
@@ -52,9 +52,9 @@ export async function POST(request) {
     }
 
     const result = await run(
-      `INSERT INTO certifications (person_id, background_check_status, application_received, training_complete)
-       VALUES (?, ?, ?, ?)`,
-      [person_id, background_check_status || 'pending', application_received ? 1 : 0, training_complete ? 1 : 0]
+      `INSERT INTO certifications (person_id, background_check_status, application_received, qpr_gatekeeper_training, qpr_training_date)
+       VALUES (?, ?, ?, ?, ?)`,
+      [person_id, background_check_status || 'pending', application_received ? 1 : 0, qpr_gatekeeper_training ? 1 : 0, qpr_training_date || null]
     )
 
     // Mark person as FC certified

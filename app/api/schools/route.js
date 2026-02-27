@@ -6,16 +6,21 @@ export async function GET(request) {
     const { searchParams } = new URL(request.url)
     const search = searchParams.get('search')
 
-    let query = 'SELECT * FROM schools WHERE 1=1'
+    let query = `
+      SELECT s.*,
+        (SELECT COUNT(*) FROM groups g WHERE g.school_id = s.id) as group_count
+      FROM schools s
+      WHERE 1=1
+    `
     const params = []
 
     if (search) {
-      query += ' AND (name ILIKE ? OR city ILIKE ?)'
+      query += ' AND (s.name ILIKE ? OR s.city ILIKE ?)'
       const searchTerm = `%${search}%`
       params.push(searchTerm, searchTerm)
     }
 
-    query += ' ORDER BY name'
+    query += ' ORDER BY s.name'
 
     const schools = await all(query, params)
     return NextResponse.json(schools)

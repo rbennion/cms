@@ -26,6 +26,9 @@ export async function GET(request) {
       await sql`DROP TABLE IF EXISTS person_companies CASCADE`;
       await sql`DROP TABLE IF EXISTS person_type_assignments CASCADE`;
       await sql`DROP TABLE IF EXISTS person_types CASCADE`;
+      await sql`DROP TABLE IF EXISTS family_relationships CASCADE`;
+      await sql`DROP TABLE IF EXISTS group_leaders CASCADE`;
+      await sql`DROP TABLE IF EXISTS groups CASCADE`;
       await sql`DROP TABLE IF EXISTS schools CASCADE`;
       await sql`DROP TABLE IF EXISTS companies CASCADE`;
       await sql`DROP TABLE IF EXISTS people CASCADE`;
@@ -138,10 +141,48 @@ export async function GET(request) {
         background_check_status TEXT CHECK(background_check_status IN ('pending', 'approved', 'denied', 'expired')),
         application_received INTEGER DEFAULT 0,
         application_attachment_path TEXT,
-        training_complete INTEGER DEFAULT 0,
-        training_attachment_path TEXT,
+        qpr_gatekeeper_training INTEGER DEFAULT 0,
+        qpr_training_date DATE,
+        qpr_training_attachment_path TEXT,
+        background_check_attachment_path TEXT,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `;
+
+    // Groups table (child of schools)
+    await sql`
+      CREATE TABLE IF NOT EXISTS groups (
+        id SERIAL PRIMARY KEY,
+        school_id INTEGER NOT NULL REFERENCES schools(id) ON DELETE CASCADE,
+        name TEXT NOT NULL,
+        gender TEXT NOT NULL CHECK(gender IN ('Girls', 'Boys')),
+        year TEXT,
+        meeting_location TEXT,
+        notes TEXT,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `;
+
+    // Group leaders junction table
+    await sql`
+      CREATE TABLE IF NOT EXISTS group_leaders (
+        id SERIAL PRIMARY KEY,
+        group_id INTEGER NOT NULL REFERENCES groups(id) ON DELETE CASCADE,
+        person_id INTEGER NOT NULL REFERENCES people(id) ON DELETE CASCADE,
+        UNIQUE(group_id, person_id)
+      )
+    `;
+
+    // Family relationships table
+    await sql`
+      CREATE TABLE IF NOT EXISTS family_relationships (
+        id SERIAL PRIMARY KEY,
+        person_id INTEGER NOT NULL REFERENCES people(id) ON DELETE CASCADE,
+        related_person_id INTEGER NOT NULL REFERENCES people(id) ON DELETE CASCADE,
+        UNIQUE(person_id, related_person_id),
+        CHECK(person_id != related_person_id)
       )
     `;
 
@@ -222,6 +263,9 @@ export async function GET(request) {
     await sql`CREATE INDEX IF NOT EXISTS idx_donations_person ON donations(person_id)`;
     await sql`CREATE INDEX IF NOT EXISTS idx_donations_company ON donations(company_id)`;
     await sql`CREATE INDEX IF NOT EXISTS idx_notes_entity ON notes(entity_type, entity_id)`;
+    await sql`CREATE INDEX IF NOT EXISTS idx_groups_school ON groups(school_id)`;
+    await sql`CREATE INDEX IF NOT EXISTS idx_group_leaders_group ON group_leaders(group_id)`;
+    await sql`CREATE INDEX IF NOT EXISTS idx_family_relationships_person ON family_relationships(person_id)`;
 
     // Seed default person types
     await sql`INSERT INTO person_types (name) VALUES ('Lead') ON CONFLICT (name) DO NOTHING`;

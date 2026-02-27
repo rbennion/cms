@@ -49,6 +49,7 @@ import {
   TrendingUp,
   ArrowLeft,
 } from "lucide-react";
+import { AddCertificationDialog } from "@/components/certifications/add-certification-dialog";
 
 export default function PersonDetailPage() {
   const params = useParams();
@@ -69,10 +70,12 @@ export default function PersonDetailPage() {
   const [allSchools, setAllSchools] = useState([]);
   const [allRoles, setAllRoles] = useState([]);
   const [allStages, setAllStages] = useState([]);
+  const [allPeople, setAllPeople] = useState([]);
   const [showCompanyAdd, setShowCompanyAdd] = useState(false);
   const [showSchoolAdd, setShowSchoolAdd] = useState(false);
   const [showRoleEdit, setShowRoleEdit] = useState(false);
   const [showStageEdit, setShowStageEdit] = useState(false);
+  const [showFamilyAdd, setShowFamilyAdd] = useState(false);
   const [showNewCompanyDialog, setShowNewCompanyDialog] = useState(false);
   const [newCompanyData, setNewCompanyData] = useState({
     name: "",
@@ -90,6 +93,7 @@ export default function PersonDetailPage() {
     application_received: false,
     training_complete: false,
   });
+  const [showAddCertification, setShowAddCertification] = useState(false);
 
   useEffect(() => {
     fetchPerson();
@@ -98,22 +102,23 @@ export default function PersonDetailPage() {
 
   const fetchOptions = async () => {
     try {
-      const [companiesRes, schoolsRes, rolesRes, stagesRes] = await Promise.all(
-        [
-          fetch("/api/companies?limit=1000"),
-          fetch("/api/schools"),
-          fetch("/api/roles"),
-          fetch("/api/engagement-stages"),
-        ]
-      );
+      const [companiesRes, schoolsRes, rolesRes, stagesRes, peopleRes] = await Promise.all([
+        fetch("/api/companies?limit=1000"),
+        fetch("/api/schools"),
+        fetch("/api/roles"),
+        fetch("/api/engagement-stages"),
+        fetch("/api/people?limit=1000"),
+      ]);
       const companiesData = await companiesRes.json();
       const schoolsData = await schoolsRes.json();
       const rolesData = await rolesRes.json();
       const stagesData = await stagesRes.json();
+      const peopleData = await peopleRes.json();
       setAllCompanies(companiesData.data || companiesData || []);
       setAllSchools(Array.isArray(schoolsData) ? schoolsData : []);
       setAllRoles(Array.isArray(rolesData) ? rolesData : []);
       setAllStages(Array.isArray(stagesData) ? stagesData : []);
+      setAllPeople(peopleData.data || peopleData || []);
     } catch (error) {
       console.error("Error fetching options:", error);
     }
@@ -327,6 +332,29 @@ export default function PersonDetailPage() {
     }
   };
 
+  const handleAddFamilyMember = async (familyMember) => {
+    try {
+      const currentFamilyIds = person.family_members?.map((f) => f.id) || [];
+      const res = await fetch(`/api/people/${params.id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          family_member_ids: [...currentFamilyIds, familyMember.id],
+        }),
+      });
+      if (!res.ok) throw new Error("Failed to add family member");
+      toast({ title: "Family member added successfully" });
+      setShowFamilyAdd(false);
+      fetchPerson();
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    }
+  };
+
   const handleSaveCertification = async () => {
     try {
       if (person.certification) {
@@ -438,6 +466,34 @@ export default function PersonDetailPage() {
     } finally {
       setSavingNewCompany(false);
     }
+  };
+
+  const handleRemoveFamilyMember = async (memberId) => {
+    try {
+      const currentFamilyIds = person.family_members?.map((f) => f.id) || [];
+      const res = await fetch(`/api/people/${params.id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          family_member_ids: currentFamilyIds.filter((id) => id !== memberId),
+        }),
+      });
+      if (!res.ok) throw new Error("Failed to remove family member");
+      toast({ title: "Family member removed successfully" });
+      fetchPerson();
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleCertificationCreated = () => {
+    setShowAddCertification(false);
+    fetchPerson();
+    toast({ title: "Certification created successfully" });
   };
 
   if (loading) {
@@ -1079,161 +1135,171 @@ export default function PersonDetailPage() {
               </Card>
             )}
 
-            {/* Certification Card */}
-            {(person.is_fc_certified || person.certification) && (
-              <Card>
-                <CardHeader className="flex flex-row items-center justify-between">
-                  <CardTitle className="flex items-center gap-2">
-                    <Award className="h-5 w-5" />
-                    Certification Status
-                  </CardTitle>
-                  {!isEditingCertification ? (
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      onClick={handleStartEditCertification}
-                    >
-                      <Pencil className="h-4 w-4" />
-                    </Button>
-                  ) : (
-                    <div className="flex gap-1">
+            {/* Family Members Card */}
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between">
+                <CardTitle className="flex items-center gap-2">
+                  <Users className="h-5 w-5" />
+                  Family Members
+                </CardTitle>
+                {!showFamilyAdd && (
+                  <Button size="sm" onClick={() => setShowFamilyAdd(true)}>
+                    Add
+                  </Button>
+                )}
+              </CardHeader>
+              <CardContent>
+                {showFamilyAdd && (
+                  <div className="mb-4 p-3 border rounded-lg bg-muted/50">
+                    <Label className="text-xs mb-2 block">
+                      Search and select family member
+                    </Label>
+                    <div className="flex gap-2">
+                      <MultiSelectSearch
+                        options={allPeople.filter(
+                          (p) =>
+                            p.id !== person.id &&
+                            !person.family_members?.some((fm) => fm.id === p.id)
+                        )}
+                        selected={[]}
+                        onChange={(selected) => {
+                          if (selected.length > 0) {
+                            handleAddFamilyMember(selected[0]);
+                          }
+                        }}
+                        placeholder="Search people..."
+                        renderOption={(p) => `${p.first_name} ${p.last_name}`}
+                        singleSelect
+                      />
                       <Button
                         size="sm"
                         variant="ghost"
-                        onClick={handleSaveCertification}
-                      >
-                        <Save className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        onClick={() => setIsEditingCertification(false)}
+                        onClick={() => setShowFamilyAdd(false)}
                       >
                         <X className="h-4 w-4" />
                       </Button>
                     </div>
-                  )}
-                </CardHeader>
-                <CardContent>
-                  {isEditingCertification ? (
-                    <div className="space-y-4">
-                      <div className="space-y-2">
-                        <Label>Background Check Status</Label>
-                        <Select
-                          value={certificationData.background_check_status}
-                          onValueChange={(value) =>
-                            setCertificationData({
-                              ...certificationData,
-                              background_check_status: value,
-                            })
-                          }
-                        >
-                          <SelectTrigger>
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="pending">Pending</SelectItem>
-                            <SelectItem value="approved">Approved</SelectItem>
-                            <SelectItem value="denied">Denied</SelectItem>
-                            <SelectItem value="expired">Expired</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      <div className="flex items-center space-x-2">
-                        <Checkbox
-                          id="cert-app-received"
-                          checked={certificationData.application_received}
-                          onCheckedChange={(checked) =>
-                            setCertificationData({
-                              ...certificationData,
-                              application_received: checked,
-                            })
-                          }
-                        />
-                        <Label htmlFor="cert-app-received">
-                          Application Received
-                        </Label>
-                      </div>
-                      <div className="flex items-center space-x-2">
-                        <Checkbox
-                          id="cert-training"
-                          checked={certificationData.training_complete}
-                          onCheckedChange={(checked) =>
-                            setCertificationData({
-                              ...certificationData,
-                              training_complete: checked,
-                            })
-                          }
-                        />
-                        <Label htmlFor="cert-training">Training Complete</Label>
-                      </div>
-                    </div>
-                  ) : person.certification ? (
-                    <div className="space-y-3">
-                      <div className="flex items-center justify-between p-3 border rounded-lg">
-                        <span>Background Check</span>
-                        <Badge
-                          variant={
-                            person.certification.background_check_status ===
-                            "approved"
-                              ? "success"
-                              : person.certification.background_check_status ===
-                                "pending"
-                              ? "warning"
-                              : person.certification.background_check_status ===
-                                "denied"
-                              ? "destructive"
-                              : "secondary"
-                          }
-                        >
-                          {person.certification.background_check_status ||
-                            "Not Started"}
-                        </Badge>
-                      </div>
-                      <div className="flex items-center justify-between p-3 border rounded-lg">
-                        <span>Application Received</span>
-                        <Badge
-                          variant={
-                            person.certification.application_received
-                              ? "success"
-                              : "secondary"
-                          }
-                        >
-                          {person.certification.application_received
-                            ? "Yes"
-                            : "No"}
-                        </Badge>
-                      </div>
-                      <div className="flex items-center justify-between p-3 border rounded-lg">
-                        <span>Training Complete</span>
-                        <Badge
-                          variant={
-                            person.certification.training_complete
-                              ? "success"
-                              : "secondary"
-                          }
-                        >
-                          {person.certification.training_complete
-                            ? "Yes"
-                            : "No"}
-                        </Badge>
-                      </div>
-                    </div>
-                  ) : (
-                    <p className="text-muted-foreground text-center py-4">
-                      No certification record.{" "}
-                      <Button
-                        variant="link"
-                        className="p-0 h-auto"
-                        onClick={handleStartEditCertification}
+                  </div>
+                )}
+                {person.family_members?.length === 0 ? (
+                  <p className="text-muted-foreground text-center py-4">
+                    No family members linked
+                  </p>
+                ) : (
+                  <div className="space-y-2">
+                    {person.family_members?.map((member) => (
+                      <div
+                        key={member.id}
+                        className="flex items-center justify-between p-3 border rounded-lg hover:bg-muted/50 transition-colors"
                       >
-                        Add one
-                      </Button>
-                    </p>
-                  )}
-                </CardContent>
-              </Card>
-            )}
+                        <div>
+                          <Link
+                            href={`/people/${member.id}`}
+                            className="font-medium hover:underline"
+                          >
+                            {member.first_name} {member.last_name}
+                          </Link>
+                          {member.email && (
+                            <p className="text-sm text-muted-foreground">
+                              {member.email}
+                            </p>
+                          )}
+                        </div>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => handleRemoveFamilyMember(member.id)}
+                        >
+                          <X className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* Certification Card */}
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between">
+                <CardTitle className="flex items-center gap-2">
+                  <Award className="h-5 w-5" />
+                  Certification Status
+                </CardTitle>
+                {!person.certification && (
+                  <Button size="sm" onClick={() => setShowAddCertification(true)}>
+                    <Plus className="h-4 w-4 mr-1" />
+                    Add Certification
+                  </Button>
+                )}
+              </CardHeader>
+              <CardContent>
+                {person.certification ? (
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between p-3 border rounded-lg">
+                      <span>Background Check</span>
+                      <Badge
+                        variant={
+                          person.certification.background_check_status ===
+                          "approved"
+                            ? "success"
+                            : person.certification.background_check_status ===
+                              "pending"
+                            ? "warning"
+                            : person.certification.background_check_status ===
+                              "denied"
+                            ? "destructive"
+                            : "secondary"
+                        }
+                      >
+                        {person.certification.background_check_status ||
+                          "Not Started"}
+                      </Badge>
+                    </div>
+                    <div className="flex items-center justify-between p-3 border rounded-lg">
+                      <span>Application Received</span>
+                      <Badge
+                        variant={
+                          person.certification.application_received
+                            ? "success"
+                            : "secondary"
+                        }
+                      >
+                        {person.certification.application_received
+                          ? "Yes"
+                          : "No"}
+                      </Badge>
+                    </div>
+                    <div className="flex items-center justify-between p-3 border rounded-lg">
+                      <span>QPR Gatekeeper Training</span>
+                      <Badge
+                        variant={
+                          person.certification.qpr_gatekeeper_training
+                            ? "success"
+                            : "secondary"
+                        }
+                      >
+                        {person.certification.qpr_gatekeeper_training
+                          ? "Complete"
+                          : "Not Complete"}
+                      </Badge>
+                    </div>
+                    {person.certification.qpr_training_date && (
+                      <div className="flex items-center justify-between p-3 border rounded-lg">
+                        <span>Training Date</span>
+                        <span className="text-sm">
+                          {formatDate(person.certification.qpr_training_date)}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <p className="text-muted-foreground text-center py-4">
+                    No certification record. Click &quot;Add Certification&quot; to create one.
+                  </p>
+                )}
+              </CardContent>
+            </Card>
 
             {/* Notes Section */}
             <div>
@@ -1377,6 +1443,14 @@ export default function PersonDetailPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <AddCertificationDialog
+        open={showAddCertification}
+        onOpenChange={setShowAddCertification}
+        personId={person.id}
+        personName={`${person.first_name} ${person.last_name}`}
+        onSaved={handleCertificationCreated}
+      />
     </div>
   );
 }
