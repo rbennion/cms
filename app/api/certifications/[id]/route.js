@@ -28,7 +28,7 @@ export async function PUT(request, { params }) {
   try {
     const { id } = await params
     const body = await request.json()
-    const { background_check_status, application_received, training_complete } = body
+    const { background_check_status, application_received, qpr_gatekeeper_training, qpr_training_date } = body
 
     const existing = await get('SELECT * FROM certifications WHERE id = ?', [id])
     if (!existing) {
@@ -39,13 +39,15 @@ export async function PUT(request, { params }) {
       `UPDATE certifications SET
         background_check_status = ?,
         application_received = ?,
-        training_complete = ?,
+        qpr_gatekeeper_training = ?,
+        qpr_training_date = ?,
         updated_at = CURRENT_TIMESTAMP
        WHERE id = ?`,
       [
         background_check_status || existing.background_check_status,
         application_received !== undefined ? (application_received ? 1 : 0) : existing.application_received,
-        training_complete !== undefined ? (training_complete ? 1 : 0) : existing.training_complete,
+        qpr_gatekeeper_training !== undefined ? (qpr_gatekeeper_training ? 1 : 0) : existing.qpr_gatekeeper_training,
+        qpr_training_date !== undefined ? qpr_training_date : existing.qpr_training_date,
         id
       ]
     )

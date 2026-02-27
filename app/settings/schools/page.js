@@ -23,7 +23,8 @@ import {
 } from '@/components/ui/dialog'
 import { ConfirmDialog } from '@/components/shared/confirm-dialog'
 import { useToast } from '@/components/ui/use-toast'
-import { Plus, Pencil, Trash2, Upload } from 'lucide-react'
+import { Plus, Pencil, Trash2, Upload, Users } from 'lucide-react'
+import Link from 'next/link'
 import { ImportDialog } from '@/components/shared/import-dialog'
 import { ExportButton } from '@/components/shared/export-button'
 import { SavedViewsDropdown } from '@/components/shared/saved-views-dropdown'
@@ -165,10 +166,10 @@ export default function SchoolsSettingsPage() {
               <TableHeader>
                 <TableRow>
                   <TableHead>Name</TableHead>
+                  <TableHead>Groups</TableHead>
                   <TableHead>Address</TableHead>
                   <TableHead>City</TableHead>
                   <TableHead>State</TableHead>
-                  <TableHead>ZIP</TableHead>
                   <TableHead className="w-[100px]"></TableHead>
                 </TableRow>
               </TableHeader>
@@ -188,11 +189,20 @@ export default function SchoolsSettingsPage() {
                 ) : (
                   schools.map((school) => (
                     <TableRow key={school.id}>
-                      <TableCell className="font-medium">{school.name}</TableCell>
+                      <TableCell className="font-medium">
+                        <Link href={`/settings/schools/${school.id}`} className="hover:underline">
+                          {school.name}
+                        </Link>
+                      </TableCell>
+                      <TableCell>
+                        <Link href={`/settings/schools/${school.id}`} className="inline-flex items-center gap-1 text-primary hover:underline">
+                          <Users className="h-4 w-4" />
+                          {school.group_count || 0} groups
+                        </Link>
+                      </TableCell>
                       <TableCell>{school.address || '-'}</TableCell>
                       <TableCell>{school.city || '-'}</TableCell>
                       <TableCell>{school.state || '-'}</TableCell>
-                      <TableCell>{school.zip || '-'}</TableCell>
                       <TableCell>
                         <div className="flex gap-1">
                           <Button

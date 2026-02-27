@@ -57,6 +57,18 @@ export async function GET(request, { params }) {
       ORDER BY date DESC
     `, [id])
 
+    // Get family members (bidirectional relationship)
+    const family_members = await all(`
+      SELECT p.id, p.first_name, p.last_name, p.email, p.phone
+      FROM people p
+      WHERE p.id IN (
+        SELECT related_person_id FROM family_relationships WHERE person_id = ?
+        UNION
+        SELECT person_id FROM family_relationships WHERE related_person_id = ?
+      )
+      ORDER BY p.last_name, p.first_name
+    `, [id, id])
+
     return NextResponse.json({
       ...person,
       companies,
@@ -64,7 +76,8 @@ export async function GET(request, { params }) {
       schools,
       certification,
       donations,
-      notes
+      notes,
+      family_members
     })
   } catch (error) {
     console.error('Error fetching person:', error)
@@ -93,7 +106,8 @@ export async function PUT(request, { params }) {
       children,
       company_ids,
       type_ids,
-      school_ids
+      school_ids,
+      family_member_ids
     } = body
 
     if (!first_name || !last_name) {
@@ -163,6 +177,26 @@ export async function PUT(request, { params }) {
           'INSERT INTO certifications (person_id, background_check_status) VALUES (?, ?)',
           [id, 'pending']
         )
+      }
+    }
+
+    // Update family relationships
+    if (family_member_ids !== undefined) {
+      // Delete existing relationships where this person is person_id
+      await run('DELETE FROM family_relationships WHERE person_id = ?', [id])
+      // Also delete reverse relationships where this person is related_person_id
+      await run('DELETE FROM family_relationships WHERE related_person_id = ?', [id])
+
+      if (family_member_ids.length > 0) {
+        for (const memberId of family_member_ids) {
+          // Only insert if not linking to self
+          if (memberId !== parseInt(id)) {
+            await run(
+              'INSERT INTO family_relationships (person_id, related_person_id) VALUES (?, ?) ON CONFLICT DO NOTHING',
+              [id, memberId]
+            )
+          }
+        }
       }
     }
 
