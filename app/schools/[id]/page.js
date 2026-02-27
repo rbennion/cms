@@ -9,8 +9,35 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Badge } from "@/components/ui/badge";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { MultiSelectSearch } from "@/components/ui/multi-select-search";
 import { NotesList } from "@/components/notes/notes-list";
+import { GroupForm } from "@/components/groups/group-form";
 import { ConfirmDialog } from "@/components/shared/confirm-dialog";
 import { useToast } from "@/components/ui/use-toast";
 import {
@@ -21,6 +48,7 @@ import {
   Save,
   X,
   ArrowLeft,
+  Plus,
 } from "lucide-react";
 
 export default function SchoolDetailPage() {
@@ -40,10 +68,16 @@ export default function SchoolDetailPage() {
   });
   const [allPeople, setAllPeople] = useState([]);
   const [showPersonAdd, setShowPersonAdd] = useState(false);
+  const [groups, setGroups] = useState([]);
+  const [genderFilter, setGenderFilter] = useState("all");
+  const [showGroupForm, setShowGroupForm] = useState(false);
+  const [editingGroup, setEditingGroup] = useState(null);
+  const [deleteGroup, setDeleteGroup] = useState(null);
 
   useEffect(() => {
     fetchSchool();
     fetchPeople();
+    fetchGroups();
   }, [params.id]);
 
   const fetchPeople = async () => {
@@ -54,6 +88,45 @@ export default function SchoolDetailPage() {
     } catch (error) {
       console.error("Error fetching people:", error);
     }
+  };
+
+  const fetchGroups = async () => {
+    try {
+      const res = await fetch(`/api/schools/${params.id}/groups`);
+      if (res.ok) {
+        const data = await res.json();
+        setGroups(data);
+      }
+    } catch (error) {
+      console.error("Error fetching groups:", error);
+    }
+  };
+
+  const handleDeleteGroup = async () => {
+    if (!deleteGroup) return;
+    try {
+      const res = await fetch(`/api/groups/${deleteGroup.id}`, {
+        method: "DELETE",
+      });
+      if (res.ok) {
+        setDeleteGroup(null);
+        fetchGroups();
+        toast({ title: "Group deleted successfully" });
+      }
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleGroupSaved = () => {
+    setShowGroupForm(false);
+    setEditingGroup(null);
+    fetchGroups();
+    toast({ title: "Group saved successfully" });
   };
 
   const fetchSchool = async () => {
@@ -425,6 +498,143 @@ export default function SchoolDetailPage() {
               </CardContent>
             </Card>
 
+            {/* Groups Stat Cards */}
+            <div className="grid grid-cols-3 gap-4">
+              <Card>
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-sm font-medium text-muted-foreground">Total Groups</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">{groups.length}</div>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-sm font-medium text-muted-foreground">Girls Groups</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">{groups.filter(g => g.gender === "Girls").length}</div>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-sm font-medium text-muted-foreground">Boys Groups</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">{groups.filter(g => g.gender === "Boys").length}</div>
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* Groups Card */}
+            <Card>
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <CardTitle className="flex items-center gap-2">
+                    <Users className="h-5 w-5" />
+                    Groups
+                  </CardTitle>
+                  <div className="flex items-center gap-4">
+                    <Select value={genderFilter} onValueChange={setGenderFilter}>
+                      <SelectTrigger className="w-32">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">All</SelectItem>
+                        <SelectItem value="Girls">Girls</SelectItem>
+                        <SelectItem value="Boys">Boys</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <Button size="sm" onClick={() => setShowGroupForm(true)}>
+                      <Plus className="h-4 w-4 mr-2" />
+                      Add Group
+                    </Button>
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent>
+                {(() => {
+                  const filteredGroups = genderFilter === "all"
+                    ? groups
+                    : groups.filter(g => g.gender === genderFilter);
+                  return filteredGroups.length === 0 ? (
+                    <p className="text-center text-muted-foreground py-8">
+                      No groups found. Create your first group to get started.
+                    </p>
+                  ) : (
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Name</TableHead>
+                          <TableHead>Gender</TableHead>
+                          <TableHead>Year</TableHead>
+                          <TableHead>Leaders</TableHead>
+                          <TableHead>Meeting Location</TableHead>
+                          <TableHead className="w-24">Actions</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {filteredGroups.map((group) => (
+                          <TableRow key={group.id}>
+                            <TableCell className="font-medium">{group.name}</TableCell>
+                            <TableCell>
+                              <Badge variant={group.gender === "Girls" ? "default" : "secondary"}>
+                                {group.gender}
+                              </Badge>
+                            </TableCell>
+                            <TableCell>{group.year || "-"}</TableCell>
+                            <TableCell>
+                              {group.leaders && group.leaders.length > 0 ? (
+                                <div className="flex flex-wrap gap-1">
+                                  {group.leaders.map((leader, i) => (
+                                    <span key={leader.id}>
+                                      <Link
+                                        href={`/people/${leader.id}`}
+                                        className="text-sm text-primary hover:underline"
+                                      >
+                                        {leader.first_name} {leader.last_name}
+                                      </Link>
+                                      {i < group.leaders.length - 1 && (
+                                        <span className="text-muted-foreground">, </span>
+                                      )}
+                                    </span>
+                                  ))}
+                                </div>
+                              ) : (
+                                <span className="text-muted-foreground">-</span>
+                              )}
+                            </TableCell>
+                            <TableCell>{group.meeting_location || "-"}</TableCell>
+                            <TableCell>
+                              <div className="flex items-center gap-2">
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  onClick={() => {
+                                    setEditingGroup(group);
+                                    setShowGroupForm(true);
+                                  }}
+                                >
+                                  <Pencil className="h-4 w-4" />
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  onClick={() => setDeleteGroup(group)}
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  );
+                })()}
+              </CardContent>
+            </Card>
+
             {/* Notes Section */}
             <div>
               <NotesList
@@ -446,6 +656,33 @@ export default function SchoolDetailPage() {
         confirmText="Delete"
         onConfirm={handleDelete}
       />
+
+      <GroupForm
+        open={showGroupForm}
+        onOpenChange={(open) => {
+          setShowGroupForm(open);
+          if (!open) setEditingGroup(null);
+        }}
+        schoolId={params.id}
+        group={editingGroup}
+        people={allPeople}
+        onSaved={handleGroupSaved}
+      />
+
+      <AlertDialog open={!!deleteGroup} onOpenChange={() => setDeleteGroup(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Group</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete &quot;{deleteGroup?.name}&quot;? This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDeleteGroup}>Delete</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
