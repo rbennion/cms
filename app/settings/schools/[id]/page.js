@@ -284,7 +284,7 @@ export default function SchoolDetailPage() {
           <AlertDialogHeader>
             <AlertDialogTitle>Delete Group</AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to delete "{deleteGroup?.name}"? This action cannot be undone.
+              Are you sure you want to delete &quot;{deleteGroup?.name}&quot;? This action cannot be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
