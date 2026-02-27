@@ -25,7 +25,10 @@ export async function GET(request) {
       await sql`DROP TABLE IF EXISTS person_schools CASCADE`;
       await sql`DROP TABLE IF EXISTS person_companies CASCADE`;
       await sql`DROP TABLE IF EXISTS person_type_assignments CASCADE`;
+      await sql`DROP TABLE IF EXISTS person_roles CASCADE`;
       await sql`DROP TABLE IF EXISTS person_types CASCADE`;
+      await sql`DROP TABLE IF EXISTS roles CASCADE`;
+      await sql`DROP TABLE IF EXISTS engagement_stages CASCADE`;
       await sql`DROP TABLE IF EXISTS family_relationships CASCADE`;
       await sql`DROP TABLE IF EXISTS group_leaders CASCADE`;
       await sql`DROP TABLE IF EXISTS groups CASCADE`;
@@ -53,6 +56,7 @@ export async function GET(request) {
         is_donor INTEGER DEFAULT 0,
         is_fc_certified INTEGER DEFAULT 0,
         is_board_member INTEGER DEFAULT 0,
+        stage_id INTEGER,
         children TEXT,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
@@ -90,6 +94,31 @@ export async function GET(request) {
       CREATE TABLE IF NOT EXISTS person_types (
         id SERIAL PRIMARY KEY,
         name TEXT NOT NULL UNIQUE
+      )
+    `;
+
+    await sql`
+      CREATE TABLE IF NOT EXISTS roles (
+        id SERIAL PRIMARY KEY,
+        name TEXT NOT NULL UNIQUE,
+        sort_order INTEGER DEFAULT 0
+      )
+    `;
+
+    await sql`
+      CREATE TABLE IF NOT EXISTS engagement_stages (
+        id SERIAL PRIMARY KEY,
+        name TEXT NOT NULL UNIQUE,
+        sort_order INTEGER DEFAULT 0
+      )
+    `;
+
+    await sql`
+      CREATE TABLE IF NOT EXISTS person_roles (
+        id SERIAL PRIMARY KEY,
+        person_id INTEGER NOT NULL REFERENCES people(id) ON DELETE CASCADE,
+        role_id INTEGER NOT NULL REFERENCES roles(id) ON DELETE CASCADE,
+        UNIQUE(person_id, role_id)
       )
     `;
 
@@ -266,6 +295,8 @@ export async function GET(request) {
     await sql`CREATE INDEX IF NOT EXISTS idx_groups_school ON groups(school_id)`;
     await sql`CREATE INDEX IF NOT EXISTS idx_group_leaders_group ON group_leaders(group_id)`;
     await sql`CREATE INDEX IF NOT EXISTS idx_family_relationships_person ON family_relationships(person_id)`;
+    await sql`CREATE INDEX IF NOT EXISTS idx_person_roles_person ON person_roles(person_id)`;
+    await sql`CREATE INDEX IF NOT EXISTS idx_person_roles_role ON person_roles(role_id)`;
 
     // Seed default person types
     await sql`INSERT INTO person_types (name) VALUES ('Lead') ON CONFLICT (name) DO NOTHING`;

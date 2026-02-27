@@ -54,7 +54,7 @@ export function Sidebar() {
               </div>
             )}
             <span className="text-lg font-semibold">{appName}</span>
-            <span className="text-xs text-muted-foreground">v0.3.0</span>
+            <span className="text-xs text-muted-foreground">v0.4.0</span>
           </Link>
         </div>
 
