@@ -5,10 +5,10 @@ export async function GET(request) {
   try {
     const { searchParams } = new URL(request.url);
     const search = searchParams.get("search") || "";
-    const type = searchParams.get("type");
+    const roleIds = searchParams.get("role_ids"); // comma-separated list
+    const stageId = searchParams.get("stage_id");
     const isDonor = searchParams.get("is_donor");
     const isFcCertified = searchParams.get("is_fc_certified");
-    const isBoardMember = searchParams.get("is_board_member");
     const schoolId = searchParams.get("school_id");
     const sortBy = searchParams.get("sort_by") || "last_name";
     const sortOrder = searchParams.get("sort_order") || "asc";
@@ -16,17 +16,19 @@ export async function GET(request) {
     const limit = parseInt(searchParams.get("limit") || "20");
     const offset = (page - 1) * limit;
 
-    // Build base query with subquery for types
+    // Build base query with subqueries for roles and stage
     let baseQuery = `
       SELECT p.id, p.first_name, p.middle_name, p.last_name, p.email, p.phone, 
              p.title, p.address, p.city, p.state, p.zip, p.picture_path,
-             p.is_donor, p.is_fc_certified, p.is_board_member, p.children,
+             p.is_donor, p.is_fc_certified, p.stage_id, p.children,
              p.created_at, p.updated_at,
-             (SELECT STRING_AGG(pt.name, ',') 
-              FROM person_type_assignments pta 
-              JOIN person_types pt ON pta.type_id = pt.id 
-              WHERE pta.person_id = p.id) as types
+             es.name as stage_name,
+             (SELECT STRING_AGG(r.name, ',') 
+              FROM person_roles pr 
+              JOIN roles r ON pr.role_id = r.id 
+              WHERE pr.person_id = p.id) as roles
       FROM people p
+      LEFT JOIN engagement_stages es ON p.stage_id = es.id
       WHERE 1=1
     `;
     const params = [];
@@ -37,24 +39,32 @@ export async function GET(request) {
       params.push(searchTerm, searchTerm, searchTerm, searchTerm);
     }
 
-    if (type) {
-      baseQuery += ` AND EXISTS (SELECT 1 FROM person_type_assignments pta WHERE pta.person_id = p.id AND pta.type_id = ?)`;
-      params.push(type);
+    if (roleIds) {
+      const roleIdArray = roleIds
+        .split(",")
+        .map((id) => id.trim())
+        .filter(Boolean);
+      if (roleIdArray.length > 0) {
+        // Match people who have ANY of the selected roles
+        const placeholders = roleIdArray.map(() => "?").join(",");
+        baseQuery += ` AND EXISTS (SELECT 1 FROM person_roles pr WHERE pr.person_id = p.id AND pr.role_id IN (${placeholders}))`;
+        params.push(...roleIdArray);
+      }
     }
 
-    if (isDonor !== null && isDonor !== undefined) {
+    if (stageId) {
+      baseQuery += ` AND p.stage_id = ?`;
+      params.push(stageId);
+    }
+
+    if (isDonor === "true" || isDonor === "false") {
       baseQuery += ` AND p.is_donor = ?`;
       params.push(isDonor === "true" ? 1 : 0);
     }
 
-    if (isFcCertified !== null && isFcCertified !== undefined) {
+    if (isFcCertified === "true" || isFcCertified === "false") {
       baseQuery += ` AND p.is_fc_certified = ?`;
       params.push(isFcCertified === "true" ? 1 : 0);
-    }
-
-    if (isBoardMember !== null && isBoardMember !== undefined) {
-      baseQuery += ` AND p.is_board_member = ?`;
-      params.push(isBoardMember === "true" ? 1 : 0);
     }
 
     if (schoolId) {
@@ -75,7 +85,7 @@ export async function GET(request) {
     // Get total count
     const countQuery = baseQuery.replace(
       /SELECT p\.id.*?FROM people p/s,
-      "SELECT COUNT(*) as count FROM people p",
+      "SELECT COUNT(DISTINCT p.id) as count FROM people p"
     );
     const countResult = await get(countQuery, params);
     const total = countResult?.count || 0;
@@ -99,7 +109,7 @@ export async function GET(request) {
     console.error("Error fetching people:", error);
     return NextResponse.json(
       { error: "Failed to fetch people" },
-      { status: 500 },
+      { status: 500 }
     );
   }
 }
@@ -120,22 +130,23 @@ export async function POST(request) {
       zip,
       is_donor,
       is_fc_certified,
-      is_board_member,
+      certification_status,
+      stage_id,
       children,
       company_ids,
-      type_ids,
+      role_ids,
       school_ids,
     } = body;
 
     if (!first_name || !last_name) {
       return NextResponse.json(
         { error: "First name and last name are required" },
-        { status: 400 },
+        { status: 400 }
       );
     }
 
     const result = await run(
-      `INSERT INTO people (first_name, middle_name, last_name, email, phone, title, address, city, state, zip, is_donor, is_fc_certified, is_board_member, children)
+      `INSERT INTO people (first_name, middle_name, last_name, email, phone, title, address, city, state, zip, is_donor, is_fc_certified, stage_id, children)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         first_name,
@@ -150,9 +161,9 @@ export async function POST(request) {
         zip || null,
         is_donor ? 1 : 0,
         is_fc_certified ? 1 : 0,
-        is_board_member ? 1 : 0,
+        stage_id || null,
         children || null,
-      ],
+      ]
     );
 
     const personId = result.lastInsertRowid;
@@ -162,17 +173,17 @@ export async function POST(request) {
       for (let i = 0; i < company_ids.length; i++) {
         await run(
           "INSERT INTO person_companies (person_id, company_id, is_primary) VALUES (?, ?, ?)",
-          [personId, company_ids[i], i === 0 ? 1 : 0],
+          [personId, company_ids[i], i === 0 ? 1 : 0]
         );
       }
     }
 
-    // Add type associations
-    if (type_ids && type_ids.length > 0) {
-      for (const typeId of type_ids) {
+    // Add role associations
+    if (role_ids && role_ids.length > 0) {
+      for (const roleId of role_ids) {
         await run(
-          "INSERT INTO person_type_assignments (person_id, type_id) VALUES (?, ?)",
-          [personId, typeId],
+          "INSERT INTO person_roles (person_id, role_id) VALUES (?, ?)",
+          [personId, roleId]
         );
       }
     }
@@ -182,7 +193,7 @@ export async function POST(request) {
       for (const schoolId of school_ids) {
         await run(
           "INSERT INTO person_schools (person_id, school_id) VALUES (?, ?)",
-          [personId, schoolId],
+          [personId, schoolId]
         );
       }
     }
@@ -191,7 +202,7 @@ export async function POST(request) {
     if (is_fc_certified) {
       await run(
         "INSERT INTO certifications (person_id, background_check_status) VALUES (?, ?)",
-        [personId, "pending"],
+        [personId, certification_status || "pending"]
       );
     }
 
@@ -202,7 +213,7 @@ export async function POST(request) {
     console.error("Error creating person:", error);
     return NextResponse.json(
       { error: "Failed to create person" },
-      { status: 500 },
+      { status: 500 }
     );
   }
 }

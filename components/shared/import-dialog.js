@@ -18,7 +18,13 @@ import {
 } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/components/ui/use-toast";
-import { Upload, FileText, AlertCircle, CheckCircle } from "lucide-react";
+import {
+  Upload,
+  FileText,
+  AlertCircle,
+  CheckCircle,
+  Download,
+} from "lucide-react";
 
 const FIELD_OPTIONS = {
   people: [
@@ -47,6 +53,81 @@ const FIELD_OPTIONS = {
     { value: "state", label: "State" },
     { value: "zip", label: "Zip" },
   ],
+};
+
+// CSV templates with sample data for each entity type
+const CSV_TEMPLATES = {
+  people: {
+    headers: [
+      "first_name",
+      "last_name",
+      "email",
+      "phone",
+      "title",
+      "address",
+      "city",
+      "state",
+      "zip",
+    ],
+    sampleRows: [
+      [
+        "John",
+        "Doe",
+        "john.doe@example.com",
+        "555-123-4567",
+        "Manager",
+        "123 Main St",
+        "Austin",
+        "TX",
+        "78701",
+      ],
+      [
+        "Jane",
+        "Smith",
+        "jane.smith@example.com",
+        "555-987-6543",
+        "Director",
+        "456 Oak Ave",
+        "Dallas",
+        "TX",
+        "75201",
+      ],
+    ],
+  },
+  companies: {
+    headers: ["name", "address", "city", "state", "zip", "website"],
+    sampleRows: [
+      [
+        "Acme Corporation",
+        "100 Business Blvd",
+        "Houston",
+        "TX",
+        "77001",
+        "https://acme.example.com",
+      ],
+      [
+        "Tech Solutions Inc",
+        "200 Innovation Dr",
+        "San Antonio",
+        "TX",
+        "78201",
+        "https://techsolutions.example.com",
+      ],
+    ],
+  },
+  schools: {
+    headers: ["name", "address", "city", "state", "zip"],
+    sampleRows: [
+      ["Lincoln Elementary", "500 School Rd", "Austin", "TX", "78702"],
+      [
+        "Washington Middle School",
+        "600 Education Ave",
+        "Round Rock",
+        "TX",
+        "78664",
+      ],
+    ],
+  },
 };
 
 function parseCSVLine(line) {
@@ -81,6 +162,26 @@ export function ImportDialog({ open, onOpenChange, entityType, onSuccess }) {
   const [result, setResult] = useState(null);
 
   const fieldOptions = FIELD_OPTIONS[entityType] || [];
+
+  const handleDownloadTemplate = () => {
+    const template = CSV_TEMPLATES[entityType];
+    if (!template) return;
+
+    const csvContent = [
+      template.headers.join(","),
+      ...template.sampleRows.map((row) => row.join(",")),
+    ].join("\n");
+
+    const blob = new Blob([csvContent], { type: "text/csv" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `${entityType}-import-template.csv`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  };
 
   const handleFileChange = async (e) => {
     const selectedFile = e.target.files[0];
@@ -205,6 +306,41 @@ export function ImportDialog({ open, onOpenChange, entityType, onSuccess }) {
         </DialogHeader>
 
         <div className="space-y-6">
+          {/* Template Download & Help */}
+          <div className="bg-muted/50 rounded-lg p-4 space-y-3">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium">Need a template?</p>
+                <p className="text-xs text-muted-foreground">
+                  Download a sample CSV with the correct column format
+                </p>
+              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleDownloadTemplate}
+              >
+                <Download className="mr-2 h-4 w-4" />
+                Download Template
+              </Button>
+            </div>
+            <div className="text-xs text-muted-foreground">
+              <p className="font-medium mb-1">Expected columns:</p>
+              <p>
+                {fieldOptions.map((f, i) => (
+                  <span key={f.value}>
+                    {i > 0 && ", "}
+                    <span className={f.required ? "font-semibold" : ""}>
+                      {f.value}
+                      {f.required && "*"}
+                    </span>
+                  </span>
+                ))}
+              </p>
+              <p className="mt-1 italic">* Required fields</p>
+            </div>
+          </div>
+
           {/* File Upload */}
           <div className="space-y-2">
             <Label>CSV File</Label>
@@ -309,7 +445,11 @@ export function ImportDialog({ open, onOpenChange, entityType, onSuccess }) {
           {/* Result */}
           {result && (
             <div
-              className={`p-4 rounded-lg ${result.imported > 0 ? "bg-green-50 border border-green-200" : "bg-amber-50 border border-amber-200"}`}
+              className={`p-4 rounded-lg ${
+                result.imported > 0
+                  ? "bg-green-50 border border-green-200"
+                  : "bg-amber-50 border border-amber-200"
+              }`}
             >
               <div className="flex items-center gap-2">
                 {result.imported > 0 ? (

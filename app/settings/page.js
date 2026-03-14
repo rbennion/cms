@@ -4,96 +4,76 @@ import Link from "next/link";
 import { useSession } from "next-auth/react";
 import { Header } from "@/components/layout/header";
 import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import { Tags, UsersRound, Database } from "lucide-react";
+  UsersRound,
+  Users,
+  TrendingUp,
+  Settings,
+  ChevronRight,
+} from "lucide-react";
 
 const settingsLinks = [
   {
-    href: "/settings/person-types",
-    title: "Person Types",
-    description: "Configure types/categories for contacts",
-    icon: Tags,
+    href: "/settings/app",
+    title: "App Settings",
+    description: "Configure logo and application branding",
+    icon: Settings,
+    adminOnly: true,
+  },
+  {
+    href: "/settings/users",
+    title: "Users",
+    description: "Manage system users and permissions",
+    icon: UsersRound,
+    adminOnly: true,
+  },
+  {
+    href: "/settings/roles",
+    title: "Roles",
+    description: "Define relationship types (Board Member, Volunteer, etc.)",
+    icon: Users,
+  },
+  {
+    href: "/settings/engagement-stages",
+    title: "Engagement Stages",
+    description: "Configure pipeline stages (Lead, Prospect, Active, etc.)",
+    icon: TrendingUp,
   },
 ];
 
 export default function SettingsPage() {
   const { data: session } = useSession();
 
+  const visibleLinks = settingsLinks.filter(
+    (link) => !link.adminOnly || session?.user?.isAdmin
+  );
+
   return (
     <div className="flex flex-col">
       <Header title="Settings" description="Configure application options" />
 
-      <div className="p-6">
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-          {settingsLinks.map((link) => (
-            <Link key={link.href} href={link.href}>
-              <Card className="hover:bg-muted/50 transition-colors cursor-pointer h-full">
-                <CardHeader>
-                  <div className="flex items-center gap-4">
-                    <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-primary/10">
-                      <link.icon className="h-6 w-6 text-primary" />
-                    </div>
-                    <div>
-                      <CardTitle className="text-lg">{link.title}</CardTitle>
-                      <CardDescription>{link.description}</CardDescription>
-                    </div>
-                  </div>
-                </CardHeader>
-              </Card>
+      <div className="p-6 max-w-2xl">
+        <div className="rounded-lg border bg-card">
+          {visibleLinks.map((link, index) => (
+            <Link
+              key={link.href}
+              href={link.href}
+              className={`flex items-center gap-4 p-4 hover:bg-muted/50 transition-colors ${
+                index !== visibleLinks.length - 1 ? "border-b" : ""
+              }`}
+            >
+              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
+                <link.icon className="h-5 w-5 text-primary" />
+              </div>
+              <div className="flex-1">
+                <div className="font-medium">{link.title}</div>
+                <div className="text-sm text-muted-foreground">
+                  {link.description}
+                </div>
+              </div>
+              <ChevronRight className="h-5 w-5 text-muted-foreground" />
             </Link>
           ))}
-
-          {session?.user?.isAdmin && (
-            <Link href="/settings/users">
-              <Card className="hover:bg-muted/50 transition-colors cursor-pointer h-full">
-                <CardHeader>
-                  <div className="flex items-center gap-4">
-                    <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-primary/10">
-                      <UsersRound className="h-6 w-6 text-primary" />
-                    </div>
-                    <div>
-                      <CardTitle className="text-lg">Users</CardTitle>
-                      <CardDescription>
-                        Manage system users and permissions
-                      </CardDescription>
-                    </div>
-                  </div>
-                </CardHeader>
-              </Card>
-            </Link>
-          )}
         </div>
-
-        <Card className="mt-6">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Database className="h-5 w-5" />
-              Database Information
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-2 text-sm">
-              <p>
-                <span className="font-medium">Database:</span> SQLite
-              </p>
-              <p>
-                <span className="font-medium">Location:</span> database.sqlite
-              </p>
-              <p className="text-muted-foreground">
-                Run{" "}
-                <code className="bg-muted px-1 rounded">npm run init-db</code>{" "}
-                to initialize the database, or{" "}
-                <code className="bg-muted px-1 rounded">npm run seed</code> to
-                populate sample data.
-              </p>
-            </div>
-          </CardContent>
-        </Card>
       </div>
     </div>
   );
