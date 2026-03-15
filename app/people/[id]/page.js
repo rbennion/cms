@@ -11,7 +11,6 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
   Select,
@@ -64,7 +63,6 @@ export default function PersonDetailPage() {
     last_name: "",
     email: "",
     phone: "",
-    children: "",
   });
   const [allCompanies, setAllCompanies] = useState([]);
   const [allSchools, setAllSchools] = useState([]);
@@ -135,7 +133,6 @@ export default function PersonDetailPage() {
         last_name: data.last_name || "",
         email: data.email || "",
         phone: data.phone || "",
-        children: data.children || "",
       });
     } catch (error) {
       toast({
@@ -190,7 +187,6 @@ export default function PersonDetailPage() {
       last_name: person.last_name || "",
       email: person.email || "",
       phone: person.phone || "",
-      children: person.children || "",
     });
     setIsEditingProfile(false);
   };
@@ -580,15 +576,6 @@ export default function PersonDetailPage() {
                   <p className="text-muted-foreground">{person.title}</p>
                 )}
 
-                <div className="mt-4 flex flex-wrap justify-center gap-2">
-                  {person.is_donor ? (
-                    <Badge variant="success">Donor</Badge>
-                  ) : null}
-                  {person.is_fc_certified ? (
-                    <Badge variant="info">FC Certified</Badge>
-                  ) : null}
-                </div>
-
                 {person.stage && (
                   <div className="mt-3">
                     {(() => {
@@ -672,14 +659,6 @@ export default function PersonDetailPage() {
                       </div>
                     </div>
                   )}
-                  {person.children && (
-                    <div className="mt-6">
-                      <h4 className="text-sm font-medium mb-2">Children</h4>
-                      <p className="text-sm text-muted-foreground">
-                        {person.children}
-                      </p>
-                    </div>
-                  )}
                 </div>
               ) : (
                 <div className="mt-6 space-y-4">
@@ -746,23 +725,6 @@ export default function PersonDetailPage() {
                         })
                       }
                       className="h-8 text-sm"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="children" className="text-xs">
-                      Children
-                    </Label>
-                    <Textarea
-                      id="children"
-                      value={profileData.children}
-                      onChange={(e) =>
-                        setProfileData({
-                          ...profileData,
-                          children: e.target.value,
-                        })
-                      }
-                      className="text-sm min-h-[60px]"
-                      placeholder="e.g., Emma (8), Jack (12)"
                     />
                   </div>
                 </div>
@@ -1091,49 +1053,47 @@ export default function PersonDetailPage() {
             </Card>
 
             {/* Donations Card */}
-            {person.is_donor && (
-              <Card>
-                <CardHeader className="flex flex-row items-center justify-between">
-                  <CardTitle className="flex items-center gap-2">
-                    <DollarSign className="h-5 w-5" />
-                    Donations
-                  </CardTitle>
-                  <Button size="sm" asChild>
-                    <Link href={`/donations/new?person_id=${person.id}`}>
-                      Add Donation
-                    </Link>
-                  </Button>
-                </CardHeader>
-                <CardContent>
-                  {person.donations?.length === 0 ? (
-                    <p className="text-muted-foreground text-center py-4">
-                      No donations yet
-                    </p>
-                  ) : (
-                    <div className="space-y-3">
-                      {person.donations?.map((donation) => (
-                        <div
-                          key={donation.id}
-                          className="flex items-center justify-between p-3 border rounded-lg"
-                        >
-                          <div>
-                            <p className="text-sm text-muted-foreground">
-                              {formatDate(donation.date)}
-                            </p>
-                            {donation.note && (
-                              <p className="text-sm">{donation.note}</p>
-                            )}
-                          </div>
-                          <span className="font-semibold text-green-600">
-                            {formatCurrency(donation.amount)}
-                          </span>
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between">
+                <CardTitle className="flex items-center gap-2">
+                  <DollarSign className="h-5 w-5" />
+                  Donations
+                </CardTitle>
+                <Button size="sm" asChild>
+                  <Link href={`/donations/new?person_id=${person.id}`}>
+                    Add Donation
+                  </Link>
+                </Button>
+              </CardHeader>
+              <CardContent>
+                {person.donations?.length === 0 ? (
+                  <p className="text-muted-foreground text-center py-4">
+                    No donations yet
+                  </p>
+                ) : (
+                  <div className="space-y-3">
+                    {person.donations?.map((donation) => (
+                      <div
+                        key={donation.id}
+                        className="flex items-center justify-between p-3 border rounded-lg"
+                      >
+                        <div>
+                          <p className="text-sm text-muted-foreground">
+                            {formatDate(donation.date)}
+                          </p>
+                          {donation.note && (
+                            <p className="text-sm">{donation.note}</p>
+                          )}
                         </div>
-                      ))}
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-            )}
+                        <span className="font-semibold text-green-600">
+                          {formatCurrency(donation.amount)}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
 
             {/* Family Members Card */}
             <Card>

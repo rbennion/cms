@@ -106,27 +106,6 @@ export const createPeopleColumns = ({ onDelete }) => [
     enableSorting: false,
   },
   {
-    id: "status",
-    header: "Status",
-    cell: ({ row }) => {
-      const person = row.original;
-      const isDonor = person.is_donor === true || person.is_donor === 1;
-      const isCertified =
-        person.is_fc_certified === true || person.is_fc_certified === 1;
-
-      if (!isDonor && !isCertified)
-        return <span className="text-muted-foreground">-</span>;
-
-      return (
-        <div className="flex flex-wrap gap-1">
-          {isDonor && <Badge variant="success">Donor</Badge>}
-          {isCertified && <Badge variant="info">Certified</Badge>}
-        </div>
-      );
-    },
-    enableSorting: false,
-  },
-  {
     id: "actions",
     enableHiding: false,
     cell: ({ row }) => {

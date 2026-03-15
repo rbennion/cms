@@ -17,40 +17,31 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useToast } from "@/components/ui/use-toast";
-import { Plus, Upload, X, Filter, RotateCcw } from "lucide-react";
-import { ImportDialog } from "@/components/shared/import-dialog";
-import { ExportButton } from "@/components/shared/export-button";
-import { SavedViewsDropdown } from "@/components/shared/saved-views-dropdown";
+import { Plus, X, Filter, RotateCcw } from "lucide-react";
 import { DataTable } from "@/components/ui/data-table";
-import { createPeopleColumns } from "@/components/people/columns";
+import { createGroupsColumns } from "@/components/groups/columns";
 import { SearchableSelect } from "@/components/ui/searchable-select";
-import { MultiSelectFilter } from "@/components/ui/multi-select-filter";
 
-function PeoplePageContent() {
+function GroupsPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { toast } = useToast();
 
-  const [people, setPeople] = useState([]);
+  const [groups, setGroups] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [roles, setRoles] = useState([]);
-  const [engagementStages, setEngagementStages] = useState([]);
   const [schools, setSchools] = useState([]);
   const [deleteId, setDeleteId] = useState(null);
-  const [showImportDialog, setShowImportDialog] = useState(false);
 
   const [filters, setFilters] = useState({
     search: searchParams.get("search") || "",
-    role_ids: searchParams.get("role_ids")
-      ? searchParams.get("role_ids").split(",")
-      : [],
-    stage_id: searchParams.get("stage_id") || "",
     school_id: searchParams.get("school_id") || "",
+    gender: searchParams.get("gender") || "",
+    status: searchParams.get("status") || "",
+    year: searchParams.get("year") || "",
   });
 
-  // Memoize columns to prevent re-creation on every render
   const columns = useMemo(
-    () => createPeopleColumns({ onDelete: setDeleteId }),
+    () => createGroupsColumns({ onDelete: setDeleteId }),
     []
   );
 
@@ -58,7 +49,6 @@ function PeoplePageContent() {
   const activeFilterCount = useMemo(() => {
     return Object.entries(filters).filter(([key, value]) => {
       if (key === "search") return false;
-      if (key === "role_ids") return Array.isArray(value) && value.length > 0;
       return value;
     }).length;
   }, [filters]);
@@ -68,44 +58,38 @@ function PeoplePageContent() {
   }, []);
 
   useEffect(() => {
-    fetchPeople();
+    fetchGroups();
   }, [filters]);
 
   const fetchOptions = async () => {
     try {
-      const [rolesRes, stagesRes, schoolsRes] = await Promise.all([
-        fetch("/api/roles"),
-        fetch("/api/engagement-stages"),
-        fetch("/api/schools"),
-      ]);
-      setRoles(await rolesRes.json());
-      setEngagementStages(await stagesRes.json());
+      const schoolsRes = await fetch("/api/schools");
       setSchools(await schoolsRes.json());
     } catch (error) {
       console.error("Error fetching options:", error);
     }
   };
 
-  const fetchPeople = async () => {
+  const fetchGroups = async () => {
     setLoading(true);
     try {
       const params = new URLSearchParams({ limit: "1000" });
       Object.entries(filters).forEach(([key, value]) => {
-        if (key === "role_ids" && Array.isArray(value) && value.length > 0) {
-          params.set(key, value.join(","));
-        } else if (value && !Array.isArray(value)) {
-          params.set(key, value);
-        }
+        if (value) params.set(key, value);
       });
 
-      const res = await fetch(`/api/people?${params}`);
+      const res = await fetch(`/api/groups?${params}`);
       const data = await res.json();
-      setPeople(data.data || []);
+
+      if (Array.isArray(data)) {
+        setGroups(data);
+      } else {
+        setGroups(data.data || []);
+      }
     } catch (error) {
-      console.error("Error fetching people:", error);
       toast({
         title: "Error",
-        description: "Failed to fetch people",
+        description: "Failed to fetch groups",
         variant: "destructive",
       });
     } finally {
@@ -117,13 +101,9 @@ function PeoplePageContent() {
     (newFilters) => {
       const params = new URLSearchParams();
       Object.entries(newFilters).forEach(([key, value]) => {
-        if (key === "role_ids" && Array.isArray(value) && value.length > 0) {
-          params.set(key, value.join(","));
-        } else if (value && !Array.isArray(value)) {
-          params.set(key, value);
-        }
+        if (value) params.set(key, value);
       });
-      router.push(`/people?${params}`);
+      router.push(`/groups?${params}`);
     },
     [router]
   );
@@ -140,29 +120,22 @@ function PeoplePageContent() {
   const handleClearFilters = useCallback(() => {
     const clearedFilters = {
       search: "",
-      role_ids: [],
-      stage_id: "",
       school_id: "",
+      gender: "",
+      status: "",
+      year: "",
     };
     setFilters(clearedFilters);
-    router.push("/people");
+    router.push("/groups");
   }, [router]);
-
-  const handleApplyView = useCallback(
-    (filterState) => {
-      setFilters(filterState);
-      updateURL(filterState);
-    },
-    [updateURL]
-  );
 
   const handleDelete = async () => {
     try {
-      const res = await fetch(`/api/people/${deleteId}`, { method: "DELETE" });
-      if (!res.ok) throw new Error("Failed to delete");
-      toast({ title: "Person deleted successfully" });
+      const res = await fetch(`/api/groups/${deleteId}`, { method: "DELETE" });
+      if (!res.ok) throw new Error("Failed to delete group");
+      toast({ title: "Group deleted" });
       setDeleteId(null);
-      fetchPeople();
+      fetchGroups();
     } catch (error) {
       toast({
         title: "Error",
@@ -172,27 +145,23 @@ function PeoplePageContent() {
     }
   };
 
-  // Helper to get display name for filter values
-  const getRoleName = (id) =>
-    roles.find((r) => r.id.toString() === id)?.name || id;
-  const getStageName = (id) =>
-    engagementStages.find((s) => s.id.toString() === id)?.name || id;
   const getSchoolName = (id) =>
     schools.find((s) => s.id.toString() === id)?.name || id;
 
+  // Build unique year options from groups data
+  const yearOptions = useMemo(() => {
+    const years = [...new Set(groups.map((g) => g.year).filter(Boolean))];
+    return years.sort((a, b) => b - a);
+  }, [groups]);
+
   return (
     <div className="flex flex-col">
-      <Header title="People" description="Manage contacts and relationships">
+      <Header title="Groups" description="Manage groups">
         <div className="flex gap-2">
-          <ExportButton entityType="people" filters={filters} />
-          <Button variant="outline" onClick={() => setShowImportDialog(true)}>
-            <Upload className="mr-2 h-4 w-4" />
-            Import
-          </Button>
           <Button asChild>
-            <Link href="/people/new">
+            <Link href="/groups/new">
               <Plus className="mr-2 h-4 w-4" />
-              Add Person
+              Add Group
             </Link>
           </Button>
         </div>
@@ -201,13 +170,8 @@ function PeoplePageContent() {
       <div className="p-6">
         {/* Search and Filter Row */}
         <div className="mb-4 flex flex-wrap items-center gap-3">
-          <SavedViewsDropdown
-            entityType="people"
-            currentFilters={filters}
-            onApplyView={handleApplyView}
-          />
           <SearchInput
-            placeholder="Search by name, email, or phone..."
+            placeholder="Search by group name, school, or leader..."
             value={filters.search}
             onChange={(value) => handleFilterChange("search", value)}
             className="w-80"
@@ -217,49 +181,6 @@ function PeoplePageContent() {
             <Filter className="h-4 w-4 text-muted-foreground" />
             <span className="text-sm text-muted-foreground">Filters:</span>
           </div>
-
-          <MultiSelectFilter
-            options={roles}
-            value={filters.role_ids}
-            onChange={(value) => handleFilterChange("role_ids", value)}
-            placeholder="Roles"
-            showSearch={false}
-            renderOption={(role) => role.name}
-            getBadgeVariant={(name) => {
-              const n = name.toLowerCase();
-              if (n.includes("board")) return "purple";
-              if (n.includes("volunteer")) return "teal";
-              if (n.includes("parent")) return "pink";
-              if (n.includes("fc leader")) return "indigo";
-              if (n.includes("potential")) return "warning";
-              if (n.includes("vendor")) return "orange";
-              if (n.includes("partner")) return "cyan";
-              return "secondary";
-            }}
-          />
-
-          <Select
-            value={filters.stage_id || "_all"}
-            onValueChange={(value) =>
-              handleFilterChange("stage_id", value === "_all" ? "" : value)
-            }
-          >
-            <SelectTrigger
-              className={`w-36 ${
-                filters.stage_id ? "border-primary bg-primary/5" : ""
-              }`}
-            >
-              <SelectValue placeholder="Stage" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="_all">All Stages</SelectItem>
-              {engagementStages.map((stage) => (
-                <SelectItem key={stage.id} value={stage.id.toString()}>
-                  {stage.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
 
           <SearchableSelect
             options={schools}
@@ -271,6 +192,70 @@ function PeoplePageContent() {
             renderOption={(school) => school.name}
             showSearch={false}
           />
+
+          <Select
+            value={filters.gender || "_all"}
+            onValueChange={(value) =>
+              handleFilterChange("gender", value === "_all" ? "" : value)
+            }
+          >
+            <SelectTrigger
+              className={`w-36 ${
+                filters.gender ? "border-primary bg-primary/5" : ""
+              }`}
+            >
+              <SelectValue placeholder="Gender" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="_all">All Genders</SelectItem>
+              <SelectItem value="Girls">Girls</SelectItem>
+              <SelectItem value="Boys">Boys</SelectItem>
+            </SelectContent>
+          </Select>
+
+          <Select
+            value={filters.status || "_all"}
+            onValueChange={(value) =>
+              handleFilterChange("status", value === "_all" ? "" : value)
+            }
+          >
+            <SelectTrigger
+              className={`w-36 ${
+                filters.status ? "border-primary bg-primary/5" : ""
+              }`}
+            >
+              <SelectValue placeholder="Status" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="_all">All Statuses</SelectItem>
+              <SelectItem value="Active">Active</SelectItem>
+              <SelectItem value="Inactive">Inactive</SelectItem>
+              <SelectItem value="Alumni">Alumni</SelectItem>
+            </SelectContent>
+          </Select>
+
+          <Select
+            value={filters.year || "_all"}
+            onValueChange={(value) =>
+              handleFilterChange("year", value === "_all" ? "" : value)
+            }
+          >
+            <SelectTrigger
+              className={`w-36 ${
+                filters.year ? "border-primary bg-primary/5" : ""
+              }`}
+            >
+              <SelectValue placeholder="Year" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="_all">All Years</SelectItem>
+              {yearOptions.map((year) => (
+                <SelectItem key={year} value={year.toString()}>
+                  {year}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
 
           {activeFilterCount > 0 && (
             <Button
@@ -300,34 +285,44 @@ function PeoplePageContent() {
                 </button>
               </Badge>
             )}
-            {filters.role_ids?.length > 0 && (
-              <Badge variant="secondary" className="gap-1">
-                Roles:{" "}
-                {filters.role_ids.map((id) => getRoleName(id)).join(", ")}
-                <button
-                  onClick={() => handleFilterChange("role_ids", [])}
-                  className="ml-1 hover:text-destructive"
-                >
-                  <X className="h-3 w-3" />
-                </button>
-              </Badge>
-            )}
-            {filters.stage_id && (
-              <Badge variant="secondary" className="gap-1">
-                Stage: {getStageName(filters.stage_id)}
-                <button
-                  onClick={() => handleFilterChange("stage_id", "")}
-                  className="ml-1 hover:text-destructive"
-                >
-                  <X className="h-3 w-3" />
-                </button>
-              </Badge>
-            )}
             {filters.school_id && (
               <Badge variant="secondary" className="gap-1">
                 School: {getSchoolName(filters.school_id)}
                 <button
                   onClick={() => handleFilterChange("school_id", "")}
+                  className="ml-1 hover:text-destructive"
+                >
+                  <X className="h-3 w-3" />
+                </button>
+              </Badge>
+            )}
+            {filters.gender && (
+              <Badge variant="secondary" className="gap-1">
+                Gender: {filters.gender}
+                <button
+                  onClick={() => handleFilterChange("gender", "")}
+                  className="ml-1 hover:text-destructive"
+                >
+                  <X className="h-3 w-3" />
+                </button>
+              </Badge>
+            )}
+            {filters.status && (
+              <Badge variant="secondary" className="gap-1">
+                Status: {filters.status}
+                <button
+                  onClick={() => handleFilterChange("status", "")}
+                  className="ml-1 hover:text-destructive"
+                >
+                  <X className="h-3 w-3" />
+                </button>
+              </Badge>
+            )}
+            {filters.year && (
+              <Badge variant="secondary" className="gap-1">
+                Year: {filters.year}
+                <button
+                  onClick={() => handleFilterChange("year", "")}
                   className="ml-1 hover:text-destructive"
                 >
                   <X className="h-3 w-3" />
@@ -347,41 +342,37 @@ function PeoplePageContent() {
 
         <DataTable
           columns={columns}
-          data={people}
+          data={groups}
           loading={loading}
-          emptyMessage="No people found matching your filters"
+          emptyMessage="No groups found matching your filters"
         />
       </div>
 
       <ConfirmDialog
         open={!!deleteId}
         onOpenChange={() => setDeleteId(null)}
-        title="Delete Person"
-        description="Are you sure you want to delete this person? This action cannot be undone."
+        title="Delete Group"
+        description="Are you sure you want to delete this group? This action cannot be undone."
         confirmText="Delete"
         onConfirm={handleDelete}
-      />
-
-      <ImportDialog
-        open={showImportDialog}
-        onOpenChange={setShowImportDialog}
-        entityType="people"
-        onSuccess={fetchPeople}
       />
     </div>
   );
 }
 
-export default function PeoplePage() {
+export default function GroupsPage() {
   return (
     <Suspense
       fallback={
-        <div className="p-6">
-          <Skeleton className="h-96 w-full" />
+        <div className="flex flex-col">
+          <Header title="Groups" description="Manage groups" />
+          <div className="p-6">
+            <Skeleton className="h-96 w-full" />
+          </div>
         </div>
       }
     >
-      <PeoplePageContent />
+      <GroupsPageContent />
     </Suspense>
   );
 }

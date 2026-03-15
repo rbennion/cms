@@ -62,14 +62,11 @@ export async function GET(request, { params }) {
       ]);
     }
 
-    // Get certification if FC certified
-    let certification = null;
-    if (person.is_fc_certified) {
-      certification = await get(
-        "SELECT * FROM certifications WHERE person_id = ?",
-        [id]
-      );
-    }
+    // Get certification
+    const certification = await get(
+      "SELECT * FROM certifications WHERE person_id = ?",
+      [id]
+    );
 
     // Get recent donations
     const donations = await all(
@@ -139,10 +136,7 @@ export async function PUT(request, { params }) {
       city,
       state,
       zip,
-      is_donor,
-      is_fc_certified,
       stage_id,
-      children,
       company_ids,
       role_ids,
       school_ids,
@@ -166,10 +160,7 @@ export async function PUT(request, { params }) {
       city !== undefined ||
       state !== undefined ||
       zip !== undefined ||
-      is_donor !== undefined ||
-      is_fc_certified !== undefined ||
-      stage_id !== undefined ||
-      children !== undefined;
+      stage_id !== undefined;
 
     if (hasPersonFields) {
       // Use existing values as defaults for partial updates
@@ -189,7 +180,7 @@ export async function PUT(request, { params }) {
         `UPDATE people SET
           first_name = ?, middle_name = ?, last_name = ?, email = ?, phone = ?,
           title = ?, address = ?, city = ?, state = ?, zip = ?,
-          is_donor = ?, is_fc_certified = ?, stage_id = ?, children = ?,
+          stage_id = ?,
           updated_at = CURRENT_TIMESTAMP
          WHERE id = ?`,
         [
@@ -205,14 +196,7 @@ export async function PUT(request, { params }) {
           city !== undefined ? city || null : existing.city,
           state !== undefined ? state || null : existing.state,
           zip !== undefined ? zip || null : existing.zip,
-          is_donor !== undefined ? (is_donor ? 1 : 0) : existing.is_donor,
-          is_fc_certified !== undefined
-            ? is_fc_certified
-              ? 1
-              : 0
-            : existing.is_fc_certified,
           stage_id !== undefined ? stage_id || null : existing.stage_id,
-          children !== undefined ? children || null : existing.children,
           id,
         ]
       );
@@ -254,25 +238,6 @@ export async function PUT(request, { params }) {
             [id, schoolId]
           );
         }
-      }
-    }
-
-    // Handle certification status change
-    const newIsFcCertified =
-      is_fc_certified !== undefined
-        ? is_fc_certified
-        : existing.is_fc_certified;
-    if (newIsFcCertified && !existing.is_fc_certified) {
-      // Newly certified - create certification record
-      const existingCert = await get(
-        "SELECT * FROM certifications WHERE person_id = ?",
-        [id]
-      );
-      if (!existingCert) {
-        await run(
-          "INSERT INTO certifications (person_id, background_check_status) VALUES (?, ?)",
-          [id, "pending"]
-        );
       }
     }
 

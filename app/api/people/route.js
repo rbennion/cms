@@ -7,8 +7,6 @@ export async function GET(request) {
     const search = searchParams.get("search") || "";
     const roleIds = searchParams.get("role_ids"); // comma-separated list
     const stageId = searchParams.get("stage_id");
-    const isDonor = searchParams.get("is_donor");
-    const isFcCertified = searchParams.get("is_fc_certified");
     const schoolId = searchParams.get("school_id");
     const sortBy = searchParams.get("sort_by") || "last_name";
     const sortOrder = searchParams.get("sort_order") || "asc";
@@ -18,9 +16,9 @@ export async function GET(request) {
 
     // Build base query with subqueries for roles and stage
     let baseQuery = `
-      SELECT p.id, p.first_name, p.middle_name, p.last_name, p.email, p.phone, 
+      SELECT p.id, p.first_name, p.middle_name, p.last_name, p.email, p.phone,
              p.title, p.address, p.city, p.state, p.zip, p.picture_path,
-             p.is_donor, p.is_fc_certified, p.stage_id, p.children,
+             p.stage_id,
              p.created_at, p.updated_at,
              es.name as stage_name,
              (SELECT STRING_AGG(r.name, ',') 
@@ -55,16 +53,6 @@ export async function GET(request) {
     if (stageId) {
       baseQuery += ` AND p.stage_id = ?`;
       params.push(stageId);
-    }
-
-    if (isDonor === "true" || isDonor === "false") {
-      baseQuery += ` AND p.is_donor = ?`;
-      params.push(isDonor === "true" ? 1 : 0);
-    }
-
-    if (isFcCertified === "true" || isFcCertified === "false") {
-      baseQuery += ` AND p.is_fc_certified = ?`;
-      params.push(isFcCertified === "true" ? 1 : 0);
     }
 
     if (schoolId) {
@@ -128,11 +116,7 @@ export async function POST(request) {
       city,
       state,
       zip,
-      is_donor,
-      is_fc_certified,
-      certification_status,
       stage_id,
-      children,
       company_ids,
       role_ids,
       school_ids,
@@ -146,8 +130,8 @@ export async function POST(request) {
     }
 
     const result = await run(
-      `INSERT INTO people (first_name, middle_name, last_name, email, phone, title, address, city, state, zip, is_donor, is_fc_certified, stage_id, children)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      `INSERT INTO people (first_name, middle_name, last_name, email, phone, title, address, city, state, zip, stage_id)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         first_name,
         middle_name || null,
@@ -159,10 +143,7 @@ export async function POST(request) {
         city || null,
         state || null,
         zip || null,
-        is_donor ? 1 : 0,
-        is_fc_certified ? 1 : 0,
         stage_id || null,
-        children || null,
       ]
     );
 
@@ -196,14 +177,6 @@ export async function POST(request) {
           [personId, schoolId]
         );
       }
-    }
-
-    // Create certification record if FC certified
-    if (is_fc_certified) {
-      await run(
-        "INSERT INTO certifications (person_id, background_check_status) VALUES (?, ?)",
-        [personId, certification_status || "pending"]
-      );
     }
 
     const person = await get("SELECT * FROM people WHERE id = ?", [personId]);

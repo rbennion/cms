@@ -34,6 +34,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { MultiSelectSearch } from "@/components/ui/multi-select-search";
 import { useToast } from "@/components/ui/use-toast";
 import { formatDate } from "@/lib/utils";
+import { SearchInput } from "@/components/shared/search-input";
 import {
   Award,
   CheckCircle,
@@ -55,7 +56,7 @@ export default function CertificationsPage() {
   const { toast } = useToast();
   const [certifications, setCertifications] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [filter, setFilter] = useState({ status: "", training: "" });
+  const [filter, setFilter] = useState({ search: "", status: "", training: "" });
   const [editCert, setEditCert] = useState(null);
   const [uploadCert, setUploadCert] = useState(null);
   const [uploadType, setUploadType] = useState(null);
@@ -83,6 +84,7 @@ export default function CertificationsPage() {
     setLoading(true);
     try {
       const params = new URLSearchParams();
+      if (filter.search) params.append("search", filter.search);
       if (filter.status)
         params.append("background_check_status", filter.status);
       if (filter.training) params.append("training_complete", filter.training);
@@ -205,6 +207,25 @@ export default function CertificationsPage() {
     }
   };
 
+  const handleToggleApplicationReceived = async (certId, currentValue) => {
+    try {
+      const res = await fetch(`/api/certifications/${certId}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ application_received: !currentValue }),
+      });
+      if (!res.ok) throw new Error("Failed to update application status");
+      toast({ title: "Application status updated" });
+      fetchCertifications();
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    }
+  };
+
   const handleFileUpload = async (e) => {
     const file = e.target.files[0];
     if (!file) return;
@@ -278,8 +299,16 @@ export default function CertificationsPage() {
           })}
         </div>
 
-        {/* Filters */}
+        {/* Search and Filters */}
         <div className="mb-6 flex flex-wrap gap-3">
+          <SearchInput
+            placeholder="Search by name or email..."
+            value={filter.search}
+            onChange={(value) =>
+              setFilter((prev) => ({ ...prev, search: value }))
+            }
+            className="w-full sm:w-80"
+          />
           <Select
             value={filter.status || "all"}
             onValueChange={(value) =>
@@ -371,6 +400,13 @@ export default function CertificationsPage() {
                       <Badge
                         variant={
                           cert.application_received ? "success" : "secondary"
+                        }
+                        className="cursor-pointer"
+                        onClick={() =>
+                          handleToggleApplicationReceived(
+                            cert.id,
+                            cert.application_received
+                          )
                         }
                       >
                         App: {cert.application_received ? "Yes" : "No"}
@@ -465,6 +501,13 @@ export default function CertificationsPage() {
                               cert.application_received
                                 ? "success"
                                 : "secondary"
+                            }
+                            className="cursor-pointer"
+                            onClick={() =>
+                              handleToggleApplicationReceived(
+                                cert.id,
+                                cert.application_received
+                              )
                             }
                           >
                             {cert.application_received

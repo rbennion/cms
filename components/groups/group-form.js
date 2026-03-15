@@ -19,7 +19,7 @@ import {
   SelectTrigger,
   SelectValue
 } from '@/components/ui/select'
-import { Checkbox } from '@/components/ui/checkbox'
+import { MultiSelectSearch } from '@/components/ui/multi-select-search'
 
 export function GroupForm({ open, onOpenChange, schoolId, group, people, onSaved }) {
   const [formData, setFormData] = useState({
@@ -28,9 +28,22 @@ export function GroupForm({ open, onOpenChange, schoolId, group, people, onSaved
     year: '',
     meeting_location: '',
     notes: '',
-    leader_ids: []
+    leader_ids: [],
+    primary_leader_id: null,
+    status: 'Active'
   })
   const [saving, setSaving] = useState(false)
+
+  // Sort people alphabetically by first name
+  const sortedPeople = (people || []).slice().sort((a, b) => {
+    const nameA = (a.first_name || '').toLowerCase()
+    const nameB = (b.first_name || '').toLowerCase()
+    if (nameA < nameB) return -1
+    if (nameA > nameB) return 1
+    const lastA = (a.last_name || '').toLowerCase()
+    const lastB = (b.last_name || '').toLowerCase()
+    return lastA.localeCompare(lastB)
+  })
 
   useEffect(() => {
     if (group) {
@@ -40,7 +53,9 @@ export function GroupForm({ open, onOpenChange, schoolId, group, people, onSaved
         year: group.year || '',
         meeting_location: group.meeting_location || '',
         notes: group.notes || '',
-        leader_ids: group.leaders ? group.leaders.map(l => l.id) : []
+        leader_ids: group.leaders ? group.leaders.map(l => l.id) : [],
+        primary_leader_id: group.primary_leader_id || null,
+        status: group.status || 'Active'
       })
     } else {
       setFormData({
@@ -49,7 +64,9 @@ export function GroupForm({ open, onOpenChange, schoolId, group, people, onSaved
         year: '',
         meeting_location: '',
         notes: '',
-        leader_ids: []
+        leader_ids: [],
+        primary_leader_id: null,
+        status: 'Active'
       })
     }
   }, [group, open])
@@ -62,7 +79,10 @@ export function GroupForm({ open, onOpenChange, schoolId, group, people, onSaved
       const url = group ? `/api/groups/${group.id}` : '/api/groups'
       const method = group ? 'PUT' : 'POST'
 
-      const body = { ...formData }
+      const body = {
+        ...formData,
+        year: formData.year ? parseInt(formData.year, 10) : null
+      }
       if (!group) {
         body.school_id = schoolId
       }
@@ -83,18 +103,17 @@ export function GroupForm({ open, onOpenChange, schoolId, group, people, onSaved
     }
   }
 
-  function toggleLeader(personId) {
-    setFormData(prev => ({
-      ...prev,
-      leader_ids: prev.leader_ids.includes(personId)
-        ? prev.leader_ids.filter(id => id !== personId)
-        : [...prev.leader_ids, personId]
-    }))
-  }
+  // Convert leader_ids to person objects for MultiSelectSearch
+  const selectedLeaders = sortedPeople.filter(p => formData.leader_ids.includes(p.id))
+
+  // Convert primary_leader_id to person object for MultiSelectSearch
+  const selectedPrimaryLeader = formData.primary_leader_id
+    ? sortedPeople.filter(p => p.id === formData.primary_leader_id)
+    : []
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md">
+      <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>{group ? 'Edit Group' : 'Add Group'}</DialogTitle>
         </DialogHeader>
@@ -130,10 +149,30 @@ export function GroupForm({ open, onOpenChange, schoolId, group, people, onSaved
               <Label htmlFor="year">Year</Label>
               <Input
                 id="year"
+                type="number"
+                min="2000"
+                max="2099"
                 value={formData.year}
                 onChange={(e) => setFormData(prev => ({ ...prev, year: e.target.value }))}
-                placeholder="e.g., 2024-2025"
+                placeholder="e.g., 2026"
               />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="status">Status</Label>
+              <Select
+                value={formData.status}
+                onValueChange={(value) => setFormData(prev => ({ ...prev, status: value }))}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Active">Active</SelectItem>
+                  <SelectItem value="Inactive">Inactive</SelectItem>
+                  <SelectItem value="Alumni">Alumni</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
 
             <div className="space-y-2">
@@ -146,31 +185,49 @@ export function GroupForm({ open, onOpenChange, schoolId, group, people, onSaved
             </div>
 
             <div className="space-y-2">
-              <Label>Leaders</Label>
-              <div className="border rounded-md p-3 max-h-48 overflow-y-auto space-y-2">
-                {people && people.length > 0 ? (
-                  people.map((person) => (
-                    <div key={person.id} className="flex items-center space-x-2">
-                      <Checkbox
-                        id={`leader-${person.id}`}
-                        checked={formData.leader_ids.includes(person.id)}
-                        onCheckedChange={() => toggleLeader(person.id)}
-                      />
-                      <label
-                        htmlFor={`leader-${person.id}`}
-                        className="text-sm cursor-pointer"
-                      >
-                        {person.first_name} {person.last_name}
-                        {person.email && (
-                          <span className="text-muted-foreground ml-1">({person.email})</span>
-                        )}
-                      </label>
-                    </div>
-                  ))
-                ) : (
-                  <p className="text-sm text-muted-foreground">No people available to assign as leaders</p>
-                )}
-              </div>
+              <Label>Primary Leader</Label>
+              <MultiSelectSearch
+                options={sortedPeople}
+                selected={selectedPrimaryLeader}
+                onChange={(selected) => {
+                  setFormData(prev => ({
+                    ...prev,
+                    primary_leader_id: selected.length > 0 ? selected[0].id : null
+                  }))
+                }}
+                placeholder="Search for primary leader..."
+                renderOption={(p) => `${p.first_name} ${p.last_name}`}
+                singleSelect
+              />
+              {formData.primary_leader_id && (
+                <div className="text-sm text-muted-foreground">
+                  Selected: {sortedPeople.find(p => p.id === formData.primary_leader_id)?.first_name}{' '}
+                  {sortedPeople.find(p => p.id === formData.primary_leader_id)?.last_name}
+                  <button
+                    type="button"
+                    className="ml-2 text-destructive hover:underline"
+                    onClick={() => setFormData(prev => ({ ...prev, primary_leader_id: null }))}
+                  >
+                    Remove
+                  </button>
+                </div>
+              )}
+            </div>
+
+            <div className="space-y-2">
+              <Label>Additional Leaders</Label>
+              <MultiSelectSearch
+                options={sortedPeople.filter(p => p.id !== formData.primary_leader_id)}
+                selected={selectedLeaders}
+                onChange={(selected) => {
+                  setFormData(prev => ({
+                    ...prev,
+                    leader_ids: selected.map(s => s.id)
+                  }))
+                }}
+                placeholder="Search for leaders..."
+                renderOption={(p) => `${p.first_name} ${p.last_name}`}
+              />
             </div>
 
             <div className="space-y-2">

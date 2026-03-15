@@ -30,6 +30,7 @@ export async function GET(request) {
       await sql`DROP TABLE IF EXISTS roles CASCADE`;
       await sql`DROP TABLE IF EXISTS engagement_stages CASCADE`;
       await sql`DROP TABLE IF EXISTS family_relationships CASCADE`;
+      await sql`DROP TABLE IF EXISTS group_meeting_locations CASCADE`;
       await sql`DROP TABLE IF EXISTS group_leaders CASCADE`;
       await sql`DROP TABLE IF EXISTS groups CASCADE`;
       await sql`DROP TABLE IF EXISTS schools CASCADE`;
@@ -53,11 +54,8 @@ export async function GET(request) {
         state TEXT,
         zip TEXT,
         picture_path TEXT,
-        is_donor INTEGER DEFAULT 0,
-        is_fc_certified INTEGER DEFAULT 0,
         is_board_member INTEGER DEFAULT 0,
         stage_id INTEGER,
-        children TEXT,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       )
@@ -186,11 +184,28 @@ export async function GET(request) {
         school_id INTEGER NOT NULL REFERENCES schools(id) ON DELETE CASCADE,
         name TEXT NOT NULL,
         gender TEXT NOT NULL CHECK(gender IN ('Girls', 'Boys')),
-        year TEXT,
+        year INTEGER,
         meeting_location TEXT,
         notes TEXT,
+        primary_leader_id INTEGER REFERENCES people(id) ON DELETE SET NULL,
+        status TEXT CHECK(status IN ('Active', 'Inactive', 'Alumni')) DEFAULT 'Active',
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `;
+
+    // Group meeting locations table
+    await sql`
+      CREATE TABLE IF NOT EXISTS group_meeting_locations (
+        id SERIAL PRIMARY KEY,
+        group_id INTEGER NOT NULL REFERENCES groups(id) ON DELETE CASCADE,
+        name TEXT,
+        address TEXT,
+        city TEXT,
+        state TEXT,
+        zip TEXT,
+        is_primary BOOLEAN DEFAULT FALSE,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       )
     `;
 
@@ -293,6 +308,17 @@ export async function GET(request) {
     await sql`CREATE INDEX IF NOT EXISTS idx_donations_company ON donations(company_id)`;
     await sql`CREATE INDEX IF NOT EXISTS idx_notes_entity ON notes(entity_type, entity_id)`;
     await sql`CREATE INDEX IF NOT EXISTS idx_groups_school ON groups(school_id)`;
+    await sql`CREATE INDEX IF NOT EXISTS idx_group_meeting_locations_group ON group_meeting_locations(group_id)`;
+
+    // Migration: drop removed columns from people if they exist
+    try { await sql`ALTER TABLE people DROP COLUMN IF EXISTS is_donor`; } catch(e) {}
+    try { await sql`ALTER TABLE people DROP COLUMN IF EXISTS is_fc_certified`; } catch(e) {}
+    try { await sql`ALTER TABLE people DROP COLUMN IF EXISTS children`; } catch(e) {}
+
+    // Migration: add new columns to groups if they don't exist
+    try { await sql`ALTER TABLE groups ADD COLUMN IF NOT EXISTS primary_leader_id INTEGER REFERENCES people(id) ON DELETE SET NULL`; } catch(e) {}
+    try { await sql`ALTER TABLE groups ADD COLUMN IF NOT EXISTS status TEXT CHECK(status IN ('Active', 'Inactive', 'Alumni')) DEFAULT 'Active'`; } catch(e) {}
+    try { await sql`ALTER TABLE groups ALTER COLUMN year TYPE INTEGER USING year::INTEGER`; } catch(e) {}
     await sql`CREATE INDEX IF NOT EXISTS idx_group_leaders_group ON group_leaders(group_id)`;
     await sql`CREATE INDEX IF NOT EXISTS idx_family_relationships_person ON family_relationships(person_id)`;
     await sql`CREATE INDEX IF NOT EXISTS idx_person_roles_person ON person_roles(person_id)`;

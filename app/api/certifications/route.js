@@ -6,6 +6,8 @@ export async function GET(request) {
     const { searchParams } = new URL(request.url)
     const backgroundCheckStatus = searchParams.get('background_check_status')
     const qprTraining = searchParams.get('qpr_gatekeeper_training')
+    const trainingComplete = searchParams.get('training_complete')
+    const search = searchParams.get('search')
 
     let query = `
       SELECT c.*, p.first_name, p.last_name, p.email, p.phone
@@ -15,6 +17,12 @@ export async function GET(request) {
     `
     const params = []
 
+    if (search) {
+      query += ' AND (p.first_name ILIKE ? OR p.last_name ILIKE ? OR p.email ILIKE ?)'
+      const searchTerm = `%${search}%`
+      params.push(searchTerm, searchTerm, searchTerm)
+    }
+
     if (backgroundCheckStatus) {
       query += ' AND c.background_check_status = ?'
       params.push(backgroundCheckStatus)
@@ -23,6 +31,11 @@ export async function GET(request) {
     if (qprTraining !== null && qprTraining !== undefined) {
       query += ' AND c.qpr_gatekeeper_training = ?'
       params.push(qprTraining === 'true' ? 1 : 0)
+    }
+
+    if (trainingComplete !== null && trainingComplete !== undefined) {
+      query += ' AND c.training_complete = ?'
+      params.push(trainingComplete === 'true' ? 1 : 0)
     }
 
     query += ' ORDER BY p.last_name, p.first_name'

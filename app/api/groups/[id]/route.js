@@ -1,14 +1,19 @@
 import { NextResponse } from 'next/server'
 import { get, run, all } from '@/lib/db'
 
+export const dynamic = 'force-dynamic'
+
 export async function GET(request, { params }) {
   try {
     const { id } = await params
 
     const group = await get(`
-      SELECT g.*, s.name as school_name
+      SELECT g.*, s.name as school_name,
+        pl.first_name as primary_leader_first_name,
+        pl.last_name as primary_leader_last_name
       FROM groups g
       JOIN schools s ON g.school_id = s.id
+      LEFT JOIN people pl ON g.primary_leader_id = pl.id
       WHERE g.id = ?
     `, [id])
 
@@ -22,9 +27,17 @@ export async function GET(request, { params }) {
       FROM people p
       JOIN group_leaders gl ON p.id = gl.person_id
       WHERE gl.group_id = ?
+      ORDER BY p.first_name, p.last_name
     `, [id])
 
-    return NextResponse.json({ ...group, leaders })
+    // Get meeting locations
+    const meetingLocations = await all(`
+      SELECT * FROM group_meeting_locations
+      WHERE group_id = ?
+      ORDER BY is_primary DESC, name
+    `, [id])
+
+    return NextResponse.json({ ...group, leaders, meeting_locations: meetingLocations })
   } catch (error) {
     console.error('Error fetching group:', error)
     return NextResponse.json({ error: 'Failed to fetch group' }, { status: 500 })
@@ -35,7 +48,7 @@ export async function PUT(request, { params }) {
   try {
     const { id } = await params
     const body = await request.json()
-    const { name, gender, year, meeting_location, notes, leader_ids } = body
+    const { name, gender, year, meeting_location, notes, leader_ids, primary_leader_id, status } = body
 
     const existing = await get('SELECT * FROM groups WHERE id = ?', [id])
     if (!existing) {
@@ -46,6 +59,12 @@ export async function PUT(request, { params }) {
       return NextResponse.json({ error: 'Gender must be "Girls" or "Boys"' }, { status: 400 })
     }
 
+    if (status && !['Active', 'Inactive', 'Alumni'].includes(status)) {
+      return NextResponse.json({ error: 'Status must be "Active", "Inactive", or "Alumni"' }, { status: 400 })
+    }
+
+    const yearInt = year !== undefined ? (year ? parseInt(year, 10) : null) : existing.year
+
     await run(
       `UPDATE groups SET
         name = ?,
@@ -53,14 +72,18 @@ export async function PUT(request, { params }) {
         year = ?,
         meeting_location = ?,
         notes = ?,
+        primary_leader_id = ?,
+        status = ?,
         updated_at = CURRENT_TIMESTAMP
        WHERE id = ?`,
       [
         name || existing.name,
         gender || existing.gender,
-        year !== undefined ? year : existing.year,
+        yearInt,
         meeting_location !== undefined ? meeting_location : existing.meeting_location,
         notes !== undefined ? notes : existing.notes,
+        primary_leader_id !== undefined ? (primary_leader_id || null) : existing.primary_leader_id,
+        status || existing.status || 'Active',
         id
       ]
     )
@@ -78,7 +101,15 @@ export async function PUT(request, { params }) {
       }
     }
 
-    const group = await get('SELECT * FROM groups WHERE id = ?', [id])
+    const group = await get(`
+      SELECT g.*, s.name as school_name,
+        pl.first_name as primary_leader_first_name,
+        pl.last_name as primary_leader_last_name
+      FROM groups g
+      JOIN schools s ON g.school_id = s.id
+      LEFT JOIN people pl ON g.primary_leader_id = pl.id
+      WHERE g.id = ?
+    `, [id])
 
     return NextResponse.json(group)
   } catch (error) {

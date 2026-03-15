@@ -5,7 +5,6 @@ import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
@@ -40,12 +39,7 @@ export function PersonForm({ person, isEdit = false }) {
     city: person?.city || "",
     state: person?.state || "",
     zip: person?.zip || "",
-    is_donor: person?.is_donor || false,
-    is_fc_certified: person?.is_fc_certified || false,
-    certification_status:
-      person?.certification?.background_check_status || "pending",
     stage_id: person?.stage_id || null,
-    children: person?.children || "",
     role_ids: person?.roles?.map((r) => r.id) || [],
   });
 
@@ -265,57 +259,6 @@ export function PersonForm({ person, isEdit = false }) {
 
       <Card>
         <CardHeader>
-          <CardTitle>Status</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="flex items-center space-x-2">
-            <Checkbox
-              id="is_donor"
-              checked={formData.is_donor}
-              onCheckedChange={(checked) =>
-                setFormData({ ...formData, is_donor: checked })
-              }
-            />
-            <Label htmlFor="is_donor">Donor</Label>
-          </div>
-          <div className="flex items-center space-x-2">
-            <Checkbox
-              id="is_fc_certified"
-              checked={formData.is_fc_certified}
-              onCheckedChange={(checked) =>
-                setFormData({ ...formData, is_fc_certified: checked })
-              }
-            />
-            <Label htmlFor="is_fc_certified">FC Certified</Label>
-          </div>
-          {formData.is_fc_certified && (
-            <div className="mt-4 pt-4 border-t space-y-4">
-              <div className="space-y-2">
-                <Label>Certification Status</Label>
-                <Select
-                  value={formData.certification_status || "pending"}
-                  onValueChange={(value) =>
-                    setFormData({ ...formData, certification_status: value })
-                  }
-                >
-                  <SelectTrigger className="w-64">
-                    <SelectValue placeholder="Select status" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="pending">Pending</SelectItem>
-                    <SelectItem value="approved">Approved</SelectItem>
-                    <SelectItem value="denied">Denied</SelectItem>
-                    <SelectItem value="expired">Expired</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-          )}
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
           <CardTitle>Companies</CardTitle>
         </CardHeader>
         <CardContent>
@@ -341,25 +284,6 @@ export function PersonForm({ person, isEdit = false }) {
             placeholder="Search schools..."
             renderOption={(s) => s.name}
           />
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>Additional Information</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-2">
-            <Label htmlFor="children">Children (names, ages)</Label>
-            <Textarea
-              id="children"
-              value={formData.children}
-              onChange={(e) =>
-                setFormData({ ...formData, children: e.target.value })
-              }
-              placeholder="e.g., Emma (8), Jack (12)"
-            />
-          </div>
         </CardContent>
       </Card>
 

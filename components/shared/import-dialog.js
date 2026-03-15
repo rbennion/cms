@@ -37,6 +37,7 @@ const FIELD_OPTIONS = {
     { value: "city", label: "City" },
     { value: "state", label: "State" },
     { value: "zip", label: "Zip" },
+    { value: "family_members", label: "Family Members" },
   ],
   companies: [
     { value: "name", label: "Company Name", required: true },
@@ -53,6 +54,14 @@ const FIELD_OPTIONS = {
     { value: "state", label: "State" },
     { value: "zip", label: "Zip" },
   ],
+  groups: [
+    { value: "name", label: "Group Name", required: true },
+    { value: "school_name", label: "School Name", required: true },
+    { value: "gender", label: "Gender", required: true },
+    { value: "year", label: "Year" },
+    { value: "status", label: "Status" },
+    { value: "primary_leader_name", label: "Primary Leader" },
+  ],
 };
 
 // CSV templates with sample data for each entity type
@@ -68,6 +77,7 @@ const CSV_TEMPLATES = {
       "city",
       "state",
       "zip",
+      "family_members",
     ],
     sampleRows: [
       [
@@ -80,6 +90,7 @@ const CSV_TEMPLATES = {
         "Austin",
         "TX",
         "78701",
+        "Jane Doe; Jim Doe",
       ],
       [
         "Jane",
@@ -91,6 +102,7 @@ const CSV_TEMPLATES = {
         "Dallas",
         "TX",
         "75201",
+        "",
       ],
     ],
   },
@@ -126,6 +138,20 @@ const CSV_TEMPLATES = {
         "TX",
         "78664",
       ],
+    ],
+  },
+  groups: {
+    headers: [
+      "name",
+      "school_name",
+      "gender",
+      "year",
+      "status",
+      "primary_leader_name",
+    ],
+    sampleRows: [
+      ["Group Alpha", "Lincoln Elementary", "Boys", "2026", "Active", "John Doe"],
+      ["Group Beta", "Washington Middle School", "Girls", "2025", "Active", "Jane Smith"],
     ],
   },
 };

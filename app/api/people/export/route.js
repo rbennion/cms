@@ -57,6 +57,22 @@ export async function GET(request) {
       return NextResponse.json({ emails })
     }
 
+    // Fetch family members for all people
+    const familyRows = await all(`
+      SELECT fr.person_id, p.first_name, p.last_name
+      FROM family_relationships fr
+      JOIN people p ON fr.related_person_id = p.id
+      ORDER BY p.first_name, p.last_name
+    `)
+
+    const familyMap = {}
+    for (const row of familyRows) {
+      if (!familyMap[row.person_id]) {
+        familyMap[row.person_id] = []
+      }
+      familyMap[row.person_id].push(`${row.first_name} ${row.last_name}`)
+    }
+
     // CSV format
     const headers = [
       'ID',
@@ -67,8 +83,8 @@ export async function GET(request) {
       'Type',
       'School',
       'Company',
-      'Is FC Certified',
       'Notes',
+      'Family Members',
       'Created At'
     ]
 
@@ -81,8 +97,8 @@ export async function GET(request) {
       p.type || '',
       p.school_name || '',
       p.company_name || '',
-      p.is_fc_certified ? 'Yes' : 'No',
       (p.notes || '').replace(/"/g, '""'),
+      familyMap[p.id] ? familyMap[p.id].join('; ') : '',
       p.created_at || ''
     ])
 

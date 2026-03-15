@@ -94,7 +94,7 @@ export async function POST(request) {
             continue;
           }
 
-          await sql`
+          const insertResult = await sql`
             INSERT INTO people (first_name, last_name, email, phone, title, address, city, state, zip)
             VALUES (
               ${firstName},
@@ -107,7 +107,42 @@ export async function POST(request) {
               ${row[mapping.state] || null},
               ${row[mapping.zip] || null}
             )
+            RETURNING id
           `;
+
+          // Handle family_members if mapped
+          const familyStr = mapping.family_members ? row[mapping.family_members] : "";
+          if (familyStr && insertResult.rows[0]) {
+            const personId = insertResult.rows[0].id;
+            const familyNames = familyStr.split(";").map((n) => n.trim()).filter(Boolean);
+            for (const fullName of familyNames) {
+              const parts = fullName.split(/\s+/);
+              if (parts.length < 2) continue;
+              const fFirst = parts[0];
+              const fLast = parts.slice(1).join(" ");
+              const relatedPerson = await sql`
+                SELECT id FROM people
+                WHERE LOWER(first_name) = LOWER(${fFirst})
+                AND LOWER(last_name) = LOWER(${fLast})
+                LIMIT 1
+              `;
+              if (relatedPerson.rows.length > 0) {
+                const relatedId = relatedPerson.rows[0].id;
+                // Insert both directions of the relationship
+                await sql`
+                  INSERT INTO family_relationships (person_id, related_person_id)
+                  VALUES (${personId}, ${relatedId})
+                  ON CONFLICT DO NOTHING
+                `;
+                await sql`
+                  INSERT INTO family_relationships (person_id, related_person_id)
+                  VALUES (${relatedId}, ${personId})
+                  ON CONFLICT DO NOTHING
+                `;
+              }
+            }
+          }
+
           imported++;
         } else if (entityType === "companies") {
           const name = row[mapping.name] || "";
@@ -165,6 +200,78 @@ export async function POST(request) {
               ${row[mapping.city] || null},
               ${row[mapping.state] || null},
               ${row[mapping.zip] || null}
+            )
+          `;
+          imported++;
+        } else if (entityType === "groups") {
+          const name = row[mapping.name] || "";
+          const schoolName = row[mapping.school_name] || "";
+          const gender = row[mapping.gender] || "";
+
+          if (!name || !schoolName || !gender) {
+            skipped++;
+            continue;
+          }
+
+          if (!["Girls", "Boys"].includes(gender)) {
+            skipped++;
+            continue;
+          }
+
+          // Look up school by name
+          const school = await sql`
+            SELECT id FROM schools WHERE LOWER(name) = LOWER(${schoolName}) LIMIT 1
+          `;
+          if (school.rows.length === 0) {
+            skipped++;
+            continue;
+          }
+          const schoolId = school.rows[0].id;
+
+          // Check for duplicate group at same school
+          const existing = await sql`
+            SELECT id FROM groups
+            WHERE LOWER(name) = LOWER(${name})
+            AND school_id = ${schoolId}
+          `;
+
+          if (existing.rows.length > 0) {
+            skipped++;
+            continue;
+          }
+
+          // Look up primary leader if provided
+          let primaryLeaderId = null;
+          const leaderName = mapping.primary_leader_name ? row[mapping.primary_leader_name] : "";
+          if (leaderName) {
+            const parts = leaderName.trim().split(/\s+/);
+            if (parts.length >= 2) {
+              const lFirst = parts[0];
+              const lLast = parts.slice(1).join(" ");
+              const leader = await sql`
+                SELECT id FROM people
+                WHERE LOWER(first_name) = LOWER(${lFirst})
+                AND LOWER(last_name) = LOWER(${lLast})
+                LIMIT 1
+              `;
+              if (leader.rows.length > 0) {
+                primaryLeaderId = leader.rows[0].id;
+              }
+            }
+          }
+
+          const year = mapping.year ? (row[mapping.year] ? parseInt(row[mapping.year], 10) : null) : null;
+          const status = mapping.status ? (row[mapping.status] || "Active") : "Active";
+
+          await sql`
+            INSERT INTO groups (school_id, name, gender, year, status, primary_leader_id)
+            VALUES (
+              ${schoolId},
+              ${name},
+              ${gender},
+              ${year},
+              ${status},
+              ${primaryLeaderId}
             )
           `;
           imported++;

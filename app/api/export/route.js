@@ -32,7 +32,7 @@ export async function GET(request) {
       let query = `
         SELECT p.id, p.first_name, p.last_name, p.email, p.phone,
                p.title, p.address, p.city, p.state, p.zip,
-               p.is_donor, p.is_fc_certified, p.is_board_member, p.children
+               p.is_board_member
         FROM people p
         WHERE 1=1
       `;
@@ -48,23 +48,35 @@ export async function GET(request) {
         params.push(searchTerm, searchTerm, searchTerm);
       }
 
-      if (filters.is_donor !== undefined && filters.is_donor !== "") {
-        query += ` AND p.is_donor = $${params.length + 1}`;
-        params.push(filters.is_donor === "true");
-      }
-
-      if (
-        filters.is_fc_certified !== undefined &&
-        filters.is_fc_certified !== ""
-      ) {
-        query += ` AND p.is_fc_certified = $${params.length + 1}`;
-        params.push(filters.is_fc_certified === "true");
-      }
-
       query += " ORDER BY p.last_name, p.first_name";
 
       const result = await sql.query(query, params);
       data = result.rows;
+
+      // Fetch family members for all people
+      const familyResult = await sql.query(`
+        SELECT fr.person_id, p.first_name, p.last_name
+        FROM family_relationships fr
+        JOIN people p ON fr.related_person_id = p.id
+        ORDER BY p.first_name, p.last_name
+      `);
+
+      // Build a map of person_id -> "FirstName1 LastName1; FirstName2 LastName2"
+      const familyMap = {};
+      for (const row of familyResult.rows) {
+        if (!familyMap[row.person_id]) {
+          familyMap[row.person_id] = [];
+        }
+        familyMap[row.person_id].push(`${row.first_name} ${row.last_name}`);
+      }
+
+      // Add family_members to each row
+      for (const row of data) {
+        row.family_members = familyMap[row.id]
+          ? familyMap[row.id].join("; ")
+          : "";
+      }
+
       columns = [
         "id",
         "first_name",
@@ -76,10 +88,8 @@ export async function GET(request) {
         "city",
         "state",
         "zip",
-        "is_donor",
-        "is_fc_certified",
         "is_board_member",
-        "children",
+        "family_members",
       ];
     } else if (entityType === "companies") {
       let query = `
@@ -177,6 +187,66 @@ export async function GET(request) {
         "last_name",
         "company_name",
         "note",
+      ];
+    } else if (entityType === "groups") {
+      let query = `
+        SELECT g.id, g.name, s.name as school_name, g.gender, g.year, g.status,
+               pl.first_name as leader_first_name, pl.last_name as leader_last_name,
+               g.notes
+        FROM groups g
+        JOIN schools s ON g.school_id = s.id
+        LEFT JOIN people pl ON g.primary_leader_id = pl.id
+        WHERE 1=1
+      `;
+      const params = [];
+
+      if (filters.search) {
+        query += ` AND (g.name ILIKE $${params.length + 1} OR s.name ILIKE $${
+          params.length + 2
+        })`;
+        const searchTerm = `%${filters.search}%`;
+        params.push(searchTerm, searchTerm);
+      }
+
+      if (filters.status) {
+        query += ` AND g.status = $${params.length + 1}`;
+        params.push(filters.status);
+      }
+
+      if (filters.school_id) {
+        query += ` AND g.school_id = $${params.length + 1}`;
+        params.push(filters.school_id);
+      }
+
+      if (filters.gender) {
+        query += ` AND g.gender = $${params.length + 1}`;
+        params.push(filters.gender);
+      }
+
+      query += " ORDER BY s.name, g.name";
+
+      const result = await sql.query(query, params);
+      data = result.rows;
+
+      // Format primary_leader_name
+      for (const row of data) {
+        row.primary_leader_name =
+          row.leader_first_name && row.leader_last_name
+            ? `${row.leader_first_name} ${row.leader_last_name}`
+            : "";
+        delete row.leader_first_name;
+        delete row.leader_last_name;
+      }
+
+      columns = [
+        "id",
+        "name",
+        "school_name",
+        "gender",
+        "year",
+        "status",
+        "primary_leader_name",
+        "notes",
       ];
     } else {
       return NextResponse.json(
