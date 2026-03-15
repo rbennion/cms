@@ -54,7 +54,13 @@ export function Sidebar() {
               </div>
             )}
             <span className="text-lg font-semibold">{appName}</span>
-            <span className="text-xs text-muted-foreground">v0.4.0</span>
+            <span className="text-xs text-muted-foreground">v0.5.0</span>
+          </Link>
+          <Link
+            href="/release-notes"
+            className="text-xs text-primary/70 hover:text-primary underline underline-offset-2 transition-colors mt-1"
+          >
+            Release Notes
           </Link>
         </div>
 
