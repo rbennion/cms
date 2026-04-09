@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { sql } from "@vercel/postgres";
+import { sql } from "@/lib/db";
 
 // Migration endpoint that adds new schema WITHOUT deleting existing data
 export async function GET() {
