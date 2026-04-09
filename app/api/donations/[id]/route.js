@@ -51,9 +51,6 @@ export async function PUT(request, { params }) {
     )
 
     // Update donor status if donor changed
-    if (person_id) {
-      await run('UPDATE people SET is_donor = 1, updated_at = CURRENT_TIMESTAMP WHERE id = ?', [person_id])
-    }
     if (company_id) {
       await run('UPDATE companies SET is_donor = 1, updated_at = CURRENT_TIMESTAMP WHERE id = ?', [company_id])
     }

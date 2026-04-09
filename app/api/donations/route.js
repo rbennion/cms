@@ -124,13 +124,7 @@ export async function POST(request) {
       [amount, date, note || null, person_id || null, company_id || null],
     );
 
-    // Mark the person/company as a donor
-    if (person_id) {
-      await run(
-        "UPDATE people SET is_donor = 1, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
-        [person_id],
-      );
-    }
+    // Mark the company as a donor
     if (company_id) {
       await run(
         "UPDATE companies SET is_donor = 1, updated_at = CURRENT_TIMESTAMP WHERE id = ?",

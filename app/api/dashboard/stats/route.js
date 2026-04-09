@@ -11,13 +11,13 @@ export async function GET() {
 
     // People stats
     const totalPeople = await get('SELECT COUNT(*) as count FROM people')
-    const totalDonors = await get('SELECT COUNT(*) as count FROM people WHERE is_donor = 1')
-    const totalCertified = await get('SELECT COUNT(*) as count FROM people WHERE is_fc_certified = 1')
-    const totalBoardMembers = await get('SELECT COUNT(*) as count FROM people WHERE is_board_member = 1')
+    const totalDonors = await get('SELECT COUNT(DISTINCT d.person_id) as count FROM donations d WHERE d.person_id IS NOT NULL')
+    const totalCertified = await get('SELECT COUNT(*) as count FROM certifications WHERE background_check_status = ?', ['approved'])
+    const totalSchools = await get('SELECT COUNT(*) as count FROM schools')
 
     // Company stats
     const totalCompanies = await get('SELECT COUNT(*) as count FROM companies')
-    const donorCompanies = await get('SELECT COUNT(*) as count FROM companies WHERE is_donor = 1')
+    const donorCompanies = await get('SELECT COUNT(DISTINCT d.company_id) as count FROM donations d WHERE d.company_id IS NOT NULL')
 
     // Donation stats
     const totalDonationsAll = await get('SELECT COALESCE(SUM(amount), 0) as total FROM donations')
@@ -69,7 +69,7 @@ export async function GET() {
         total: totalPeople?.count || 0,
         donors: totalDonors?.count || 0,
         certified: totalCertified?.count || 0,
-        boardMembers: totalBoardMembers?.count || 0
+        schools: totalSchools?.count || 0
       },
       companies: {
         total: totalCompanies?.count || 0,

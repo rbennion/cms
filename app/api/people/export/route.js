@@ -9,8 +9,6 @@ export async function GET(request) {
     const type = searchParams.get('type')
     const schoolId = searchParams.get('school_id')
     const companyId = searchParams.get('company_id')
-    const isFcCertified = searchParams.get('is_fc_certified')
-
     let query = `
       SELECT p.*, s.name as school_name, c.name as company_name
       FROM people p
@@ -38,12 +36,6 @@ export async function GET(request) {
     if (companyId && companyId !== 'all') {
       query += ` AND p.company_id = $${params.length + 1}`
       params.push(companyId)
-    }
-
-    if (isFcCertified === 'true') {
-      query += ' AND p.is_fc_certified = true'
-    } else if (isFcCertified === 'false') {
-      query += ' AND p.is_fc_certified = false'
     }
 
     query += ' ORDER BY p.last_name, p.first_name'
