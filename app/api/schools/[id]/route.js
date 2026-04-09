@@ -12,7 +12,7 @@ export async function GET(request, { params }) {
     }
 
     const people = await all(
-      `SELECT p.id, p.first_name, p.last_name, p.email, p.phone, p.title
+      `SELECT p.id, p.first_name, p.last_name, p.email, p.phone, p.title, p.address, p.city, p.state, p.zip
        FROM people p
        JOIN person_schools ps ON p.id = ps.person_id
        WHERE ps.school_id = ?

@@ -6,7 +6,6 @@ export async function GET(request) {
     const { searchParams } = new URL(request.url)
     const backgroundCheckStatus = searchParams.get('background_check_status')
     const qprTraining = searchParams.get('qpr_gatekeeper_training')
-    const trainingComplete = searchParams.get('training_complete')
     const search = searchParams.get('search')
 
     let query = `
@@ -33,11 +32,6 @@ export async function GET(request) {
       params.push(qprTraining === 'true' ? 1 : 0)
     }
 
-    if (trainingComplete !== null && trainingComplete !== undefined) {
-      query += ' AND c.training_complete = ?'
-      params.push(trainingComplete === 'true' ? 1 : 0)
-    }
-
     query += ' ORDER BY p.last_name, p.first_name'
 
     const certifications = await all(query, params)
@@ -52,7 +46,7 @@ export async function GET(request) {
 export async function POST(request) {
   try {
     const body = await request.json()
-    const { person_id, background_check_status, application_received, qpr_gatekeeper_training, qpr_training_date } = body
+    const { person_id, background_check_status, application_received, qpr_gatekeeper_training, qpr_training_date, qpr_training_renewal_date } = body
 
     if (!person_id) {
       return NextResponse.json({ error: 'Person ID is required' }, { status: 400 })
@@ -65,13 +59,10 @@ export async function POST(request) {
     }
 
     const result = await run(
-      `INSERT INTO certifications (person_id, background_check_status, application_received, qpr_gatekeeper_training, qpr_training_date)
-       VALUES (?, ?, ?, ?, ?)`,
-      [person_id, background_check_status || 'pending', application_received ? 1 : 0, qpr_gatekeeper_training ? 1 : 0, qpr_training_date || null]
+      `INSERT INTO certifications (person_id, background_check_status, application_received, qpr_gatekeeper_training, qpr_training_date, qpr_training_renewal_date)
+       VALUES (?, ?, ?, ?, ?, ?)`,
+      [person_id, background_check_status || 'pending', application_received ? 1 : 0, qpr_gatekeeper_training ? 1 : 0, qpr_training_date || null, qpr_training_renewal_date || null]
     )
-
-    // Mark person as FC certified
-    await run('UPDATE people SET is_fc_certified = 1, updated_at = CURRENT_TIMESTAMP WHERE id = ?', [person_id])
 
     const certification = await get('SELECT * FROM certifications WHERE id = ?', [result.lastInsertRowid])
 

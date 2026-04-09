@@ -1,6 +1,5 @@
 import { NextResponse } from 'next/server'
-import { writeFile, mkdir } from 'fs/promises'
-import path from 'path'
+import { put } from '@vercel/blob'
 import { get, run } from '@/lib/db'
 import { generateUniqueFilename } from '@/lib/utils'
 
@@ -28,22 +27,15 @@ export async function POST(request, { params }) {
       return NextResponse.json({ error: 'File too large. Maximum size is 10MB' }, { status: 400 })
     }
 
-    const uploadDir = path.join(process.cwd(), 'public', 'uploads', 'documents')
-    await mkdir(uploadDir, { recursive: true })
-
     const filename = generateUniqueFilename(file.name)
-    const filepath = path.join(uploadDir, filename)
-
-    await writeFile(filepath, buffer)
-
-    const attachmentPath = `/uploads/documents/${filename}`
+    const blob = await put(`documents/${filename}`, buffer, { access: 'public' })
 
     await run(
-      'UPDATE certifications SET training_attachment_path = ?, training_complete = 1, updated_at = CURRENT_TIMESTAMP WHERE id = ?',
-      [attachmentPath, id]
+      'UPDATE certifications SET qpr_training_attachment_path = ?, qpr_gatekeeper_training = 1, updated_at = CURRENT_TIMESTAMP WHERE id = ?',
+      [blob.url, id]
     )
 
-    return NextResponse.json({ training_attachment_path: attachmentPath })
+    return NextResponse.json({ qpr_training_attachment_path: blob.url })
   } catch (error) {
     console.error('Error uploading training document:', error)
     return NextResponse.json({ error: 'Failed to upload training document' }, { status: 500 })

@@ -170,6 +170,7 @@ export async function GET(request) {
         application_attachment_path TEXT,
         qpr_gatekeeper_training INTEGER DEFAULT 0,
         qpr_training_date DATE,
+        qpr_training_renewal_date DATE,
         qpr_training_attachment_path TEXT,
         background_check_attachment_path TEXT,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -323,6 +324,9 @@ export async function GET(request) {
     await sql`CREATE INDEX IF NOT EXISTS idx_family_relationships_person ON family_relationships(person_id)`;
     await sql`CREATE INDEX IF NOT EXISTS idx_person_roles_person ON person_roles(person_id)`;
     await sql`CREATE INDEX IF NOT EXISTS idx_person_roles_role ON person_roles(role_id)`;
+
+    // Migration: add qpr_training_renewal_date to certifications if it doesn't exist
+    try { await sql`ALTER TABLE certifications ADD COLUMN IF NOT EXISTS qpr_training_renewal_date DATE`; } catch(e) {}
 
     // Seed default person types
     await sql`INSERT INTO person_types (name) VALUES ('Lead') ON CONFLICT (name) DO NOTHING`;

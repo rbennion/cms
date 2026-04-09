@@ -4,6 +4,28 @@ All notable changes to the Fight Club CRM application will be documented in this
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.6.0] - 2026-04-09
+
+### Added
+- Inline row editing on certifications list (status, checkboxes, dates — save in place)
+- Document upload buttons for all three certification types (Background Check, Application, QPR Training) on both certifications list and people detail pages
+- Document link icons appear when attachments exist
+- QPR Training Renewal Date field throughout (add dialog, inline edit, people detail)
+- Application Received checkbox in add certification dialog
+- Certification edit mode on people detail page (pencil icon on cert card)
+- Person addresses displayed on school detail page
+
+### Changed
+- Renamed "QPR Gatekeeper Training" to "QPR Training" across all UI labels
+- File uploads now use Vercel Blob storage instead of local filesystem (persistent across deployments)
+- Default branch simplified to `main` (removed legacy claude branch)
+
+### Fixed
+- Column name mismatch: code referenced `training_complete` but DB column is `qpr_gatekeeper_training` — fixed in 8 files
+- Training upload endpoint was broken in production due to wrong column names
+- Removed reference to dropped `is_fc_certified` column in certification creation
+- Database schema in `init-db.js` now matches `setup/route.js`
+
 ## [0.5.0] - 2026-03-14
 
 ### Added

@@ -483,6 +483,11 @@ export default function SchoolDetailPage() {
                               {person.title}
                             </p>
                           )}
+                          {(person.address || person.city) && (
+                            <p className="text-xs text-muted-foreground">
+                              {[person.address, person.city, person.state, person.zip].filter(Boolean).join(", ")}
+                            </p>
+                          )}
                         </div>
                         <Button
                           size="sm"

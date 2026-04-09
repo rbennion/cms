@@ -33,6 +33,7 @@ import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { MultiSelectSearch } from "@/components/ui/multi-select-search";
 import { useToast } from "@/components/ui/use-toast";
+import { Input } from "@/components/ui/input";
 import { formatDate } from "@/lib/utils";
 import { SearchInput } from "@/components/shared/search-input";
 import {
@@ -43,6 +44,10 @@ import {
   AlertCircle,
   Upload,
   Plus,
+  Pencil,
+  Save,
+  X,
+  FileText,
 } from "lucide-react";
 
 const statusConfig = {
@@ -66,9 +71,14 @@ export default function CertificationsPage() {
   const [newCertData, setNewCertData] = useState({
     background_check_status: "pending",
     application_received: false,
-    training_complete: false,
+    qpr_gatekeeper_training: false,
+    qpr_training_date: "",
+    qpr_training_renewal_date: "",
   });
   const [creatingCert, setCreatingCert] = useState(false);
+  const [editingRowId, setEditingRowId] = useState(null);
+  const [editRowData, setEditRowData] = useState({});
+  const [savingRow, setSavingRow] = useState(false);
 
   useEffect(() => {
     fetchCertifications();
@@ -87,7 +97,7 @@ export default function CertificationsPage() {
       if (filter.search) params.append("search", filter.search);
       if (filter.status)
         params.append("background_check_status", filter.status);
-      if (filter.training) params.append("training_complete", filter.training);
+      if (filter.training) params.append("qpr_gatekeeper_training", filter.training);
 
       const res = await fetch(`/api/certifications?${params}`);
       const data = await res.json();
@@ -154,7 +164,9 @@ export default function CertificationsPage() {
       setNewCertData({
         background_check_status: "pending",
         application_received: false,
-        training_complete: false,
+        qpr_gatekeeper_training: false,
+        qpr_training_date: "",
+        qpr_training_renewal_date: "",
       });
       fetchCertifications();
     } catch (error) {
@@ -193,7 +205,7 @@ export default function CertificationsPage() {
       const res = await fetch(`/api/certifications/${certId}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ training_complete: !currentValue }),
+        body: JSON.stringify({ qpr_gatekeeper_training: !currentValue }),
       });
       if (!res.ok) throw new Error("Failed to update training status");
       toast({ title: "Training status updated" });
@@ -234,10 +246,8 @@ export default function CertificationsPage() {
     formData.append("file", file);
 
     try {
-      const endpoint =
-        uploadType === "application" ? "application" : "training";
       const res = await fetch(
-        `/api/certifications/${uploadCert.id}/${endpoint}`,
+        `/api/certifications/${uploadCert.id}/${uploadType}`,
         {
           method: "POST",
           body: formData,
@@ -254,6 +264,41 @@ export default function CertificationsPage() {
         description: error.message,
         variant: "destructive",
       });
+    }
+  };
+
+  const handleStartEditRow = (cert) => {
+    setEditingRowId(cert.id);
+    setEditRowData({
+      background_check_status: cert.background_check_status || "pending",
+      application_received: !!cert.application_received,
+      qpr_gatekeeper_training: !!cert.qpr_gatekeeper_training,
+      qpr_training_date: cert.qpr_training_date || "",
+      qpr_training_renewal_date: cert.qpr_training_renewal_date || "",
+    });
+  };
+
+  const handleSaveRow = async () => {
+    setSavingRow(true);
+    try {
+      const res = await fetch(`/api/certifications/${editingRowId}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(editRowData),
+      });
+      if (!res.ok) throw new Error("Failed to update certification");
+      toast({ title: "Certification updated successfully" });
+      setEditingRowId(null);
+      setEditRowData({});
+      fetchCertifications();
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    } finally {
+      setSavingRow(false);
     }
   };
 
@@ -340,12 +385,12 @@ export default function CertificationsPage() {
             }
           >
             <SelectTrigger className="w-full sm:w-44">
-              <SelectValue placeholder="Training Status" />
+              <SelectValue placeholder="QPR Training" />
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All</SelectItem>
-              <SelectItem value="true">Training Complete</SelectItem>
-              <SelectItem value="false">Training Incomplete</SelectItem>
+              <SelectItem value="true">QPR Training Complete</SelectItem>
+              <SelectItem value="false">QPR Training Incomplete</SelectItem>
             </SelectContent>
           </Select>
         </div>
@@ -413,14 +458,14 @@ export default function CertificationsPage() {
                       </Badge>
                       <Badge
                         variant={
-                          cert.training_complete ? "success" : "secondary"
+                          cert.qpr_gatekeeper_training ? "success" : "secondary"
                         }
                         className="cursor-pointer"
                         onClick={() =>
-                          handleToggleTraining(cert.id, cert.training_complete)
+                          handleToggleTraining(cert.id, cert.qpr_gatekeeper_training)
                         }
                       >
-                        Training: {cert.training_complete ? "Yes" : "No"}
+                        QPR: {cert.qpr_gatekeeper_training ? "Yes" : "No"}
                       </Badge>
                     </div>
                   </CardContent>
@@ -439,7 +484,7 @@ export default function CertificationsPage() {
                 <TableHead className="hidden lg:table-cell">Contact</TableHead>
                 <TableHead>Background Check</TableHead>
                 <TableHead>Application</TableHead>
-                <TableHead>Training</TableHead>
+                <TableHead>QPR Training</TableHead>
                 <TableHead>Actions</TableHead>
               </TableRow>
             </TableHeader>
@@ -465,6 +510,7 @@ export default function CertificationsPage() {
                 certifications.map((cert) => {
                   const status = cert.background_check_status || "pending";
                   const config = statusConfig[status];
+                  const isEditing = editingRowId === cert.id;
                   return (
                     <TableRow key={cert.id}>
                       <TableCell>
@@ -486,80 +532,191 @@ export default function CertificationsPage() {
                         </div>
                       </TableCell>
                       <TableCell>
-                        <Badge
-                          variant={config.variant}
-                          className="cursor-pointer"
-                          onClick={() => setEditCert(cert)}
-                        >
-                          {config.label}
-                        </Badge>
+                        {isEditing ? (
+                          <Select
+                            value={editRowData.background_check_status}
+                            onValueChange={(value) =>
+                              setEditRowData({ ...editRowData, background_check_status: value })
+                            }
+                          >
+                            <SelectTrigger className="w-28">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="pending">Pending</SelectItem>
+                              <SelectItem value="approved">Approved</SelectItem>
+                              <SelectItem value="denied">Denied</SelectItem>
+                              <SelectItem value="expired">Expired</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        ) : (
+                          <div className="flex items-center gap-2">
+                            <Badge
+                              variant={config.variant}
+                              className="cursor-pointer"
+                              onClick={() => setEditCert(cert)}
+                            >
+                              {config.label}
+                            </Badge>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              onClick={() => {
+                                setUploadCert(cert);
+                                setUploadType("background-check");
+                              }}
+                            >
+                              <Upload className="h-3 w-3" />
+                            </Button>
+                            {cert.background_check_attachment_path && (
+                              <a href={cert.background_check_attachment_path} target="_blank" rel="noopener noreferrer">
+                                <FileText className="h-3 w-3 text-primary" />
+                              </a>
+                            )}
+                          </div>
+                        )}
                       </TableCell>
                       <TableCell>
-                        <div className="flex items-center gap-2">
-                          <Badge
-                            variant={
-                              cert.application_received
-                                ? "success"
-                                : "secondary"
-                            }
-                            className="cursor-pointer"
-                            onClick={() =>
-                              handleToggleApplicationReceived(
-                                cert.id,
+                        {isEditing ? (
+                          <div className="flex items-center space-x-2">
+                            <Checkbox
+                              checked={editRowData.application_received}
+                              onCheckedChange={(checked) =>
+                                setEditRowData({ ...editRowData, application_received: checked })
+                              }
+                            />
+                            <span className="text-sm">Received</span>
+                          </div>
+                        ) : (
+                          <div className="flex items-center gap-2">
+                            <Badge
+                              variant={
                                 cert.application_received
-                              )
-                            }
-                          >
-                            {cert.application_received
-                              ? "Received"
-                              : "Not Received"}
-                          </Badge>
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            onClick={() => {
-                              setUploadCert(cert);
-                              setUploadType("application");
-                            }}
-                          >
-                            <Upload className="h-3 w-3" />
-                          </Button>
-                        </div>
+                                  ? "success"
+                                  : "secondary"
+                              }
+                              className="cursor-pointer"
+                              onClick={() =>
+                                handleToggleApplicationReceived(
+                                  cert.id,
+                                  cert.application_received
+                                )
+                              }
+                            >
+                              {cert.application_received
+                                ? "Received"
+                                : "Not Received"}
+                            </Badge>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              onClick={() => {
+                                setUploadCert(cert);
+                                setUploadType("application");
+                              }}
+                            >
+                              <Upload className="h-3 w-3" />
+                            </Button>
+                            {cert.application_attachment_path && (
+                              <a href={cert.application_attachment_path} target="_blank" rel="noopener noreferrer">
+                                <FileText className="h-3 w-3 text-primary" />
+                              </a>
+                            )}
+                          </div>
+                        )}
                       </TableCell>
                       <TableCell>
-                        <div className="flex items-center gap-2">
-                          <Badge
-                            variant={
-                              cert.training_complete ? "success" : "secondary"
-                            }
-                            className="cursor-pointer"
-                            onClick={() =>
-                              handleToggleTraining(
-                                cert.id,
-                                cert.training_complete
-                              )
-                            }
-                          >
-                            {cert.training_complete ? "Complete" : "Incomplete"}
-                          </Badge>
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            onClick={() => {
-                              setUploadCert(cert);
-                              setUploadType("training");
-                            }}
-                          >
-                            <Upload className="h-3 w-3" />
-                          </Button>
-                        </div>
+                        {isEditing ? (
+                          <div className="space-y-2">
+                            <div className="flex items-center space-x-2">
+                              <Checkbox
+                                checked={editRowData.qpr_gatekeeper_training}
+                                onCheckedChange={(checked) =>
+                                  setEditRowData({ ...editRowData, qpr_gatekeeper_training: checked })
+                                }
+                              />
+                              <span className="text-sm">Complete</span>
+                            </div>
+                            <Input
+                              type="date"
+                              value={editRowData.qpr_training_date}
+                              onChange={(e) =>
+                                setEditRowData({ ...editRowData, qpr_training_date: e.target.value })
+                              }
+                              className="h-8 text-xs w-36"
+                              placeholder="Training date"
+                            />
+                            <Input
+                              type="date"
+                              value={editRowData.qpr_training_renewal_date}
+                              onChange={(e) =>
+                                setEditRowData({ ...editRowData, qpr_training_renewal_date: e.target.value })
+                              }
+                              className="h-8 text-xs w-36"
+                              placeholder="Renewal date"
+                            />
+                          </div>
+                        ) : (
+                          <div className="flex items-center gap-2">
+                            <Badge
+                              variant={
+                                cert.qpr_gatekeeper_training ? "success" : "secondary"
+                              }
+                              className="cursor-pointer"
+                              onClick={() =>
+                                handleToggleTraining(
+                                  cert.id,
+                                  cert.qpr_gatekeeper_training
+                                )
+                              }
+                            >
+                              {cert.qpr_gatekeeper_training ? "Complete" : "Incomplete"}
+                            </Badge>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              onClick={() => {
+                                setUploadCert(cert);
+                                setUploadType("training");
+                              }}
+                            >
+                              <Upload className="h-3 w-3" />
+                            </Button>
+                            {cert.qpr_training_attachment_path && (
+                              <a href={cert.qpr_training_attachment_path} target="_blank" rel="noopener noreferrer">
+                                <FileText className="h-3 w-3 text-primary" />
+                              </a>
+                            )}
+                            {cert.qpr_training_date && (
+                              <span className="text-xs text-muted-foreground">
+                                {formatDate(cert.qpr_training_date)}
+                              </span>
+                            )}
+                          </div>
+                        )}
                       </TableCell>
                       <TableCell>
-                        <Button size="sm" variant="outline" asChild>
-                          <Link href={`/people/${cert.person_id}`}>
-                            View Profile
-                          </Link>
-                        </Button>
+                        {isEditing ? (
+                          <div className="flex items-center gap-1">
+                            <Button size="sm" variant="ghost" onClick={handleSaveRow} disabled={savingRow}>
+                              <Save className="h-4 w-4" />
+                            </Button>
+                            <Button size="sm" variant="ghost" onClick={() => setEditingRowId(null)}>
+                              <X className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        ) : (
+                          <div className="flex items-center gap-1">
+                            <Button size="sm" variant="ghost" onClick={() => handleStartEditRow(cert)}>
+                              <Pencil className="h-4 w-4" />
+                            </Button>
+                            <Button size="sm" variant="outline" asChild>
+                              <Link href={`/people/${cert.person_id}`}>
+                                View
+                              </Link>
+                            </Button>
+                          </div>
+                        )}
                       </TableCell>
                     </TableRow>
                   );
@@ -607,7 +764,7 @@ export default function CertificationsPage() {
         <DialogContent>
           <DialogHeader>
             <DialogTitle>
-              Upload {uploadType === "application" ? "Application" : "Training"}{" "}
+              Upload {uploadType === "application" ? "Application" : uploadType === "training" ? "Training" : "Background Check"}{" "}
               Document
             </DialogTitle>
           </DialogHeader>
@@ -692,12 +849,34 @@ export default function CertificationsPage() {
             <div className="flex items-center space-x-2">
               <Checkbox
                 id="add-cert-training"
-                checked={newCertData.training_complete}
+                checked={newCertData.qpr_gatekeeper_training}
                 onCheckedChange={(checked) =>
-                  setNewCertData({ ...newCertData, training_complete: checked })
+                  setNewCertData({ ...newCertData, qpr_gatekeeper_training: checked })
                 }
               />
-              <Label htmlFor="add-cert-training">Training Complete</Label>
+              <Label htmlFor="add-cert-training">QPR Training Complete</Label>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="add-cert-training-date">QPR Training Date</Label>
+              <Input
+                type="date"
+                id="add-cert-training-date"
+                value={newCertData.qpr_training_date}
+                onChange={(e) =>
+                  setNewCertData({ ...newCertData, qpr_training_date: e.target.value })
+                }
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="add-cert-renewal-date">QPR Training Renewal Date</Label>
+              <Input
+                type="date"
+                id="add-cert-renewal-date"
+                value={newCertData.qpr_training_renewal_date}
+                onChange={(e) =>
+                  setNewCertData({ ...newCertData, qpr_training_renewal_date: e.target.value })
+                }
+              />
             </div>
           </div>
           <DialogFooter className="flex-col sm:flex-row gap-2">

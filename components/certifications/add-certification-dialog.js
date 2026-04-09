@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
 import { Checkbox } from '@/components/ui/checkbox'
+import { Input } from '@/components/ui/input'
 import {
   Dialog,
   DialogContent,
@@ -23,7 +24,10 @@ export function AddCertificationDialog({ open, onOpenChange, personId, personNam
   const [formData, setFormData] = useState({
     status: 'Pending',
     background_check: false,
-    qpr_gatekeeper_training: false
+    application_received: false,
+    qpr_gatekeeper_training: false,
+    qpr_training_date: '',
+    qpr_training_renewal_date: '',
   })
   const [saving, setSaving] = useState(false)
 
@@ -45,7 +49,10 @@ export function AddCertificationDialog({ open, onOpenChange, personId, personNam
         setFormData({
           status: 'Pending',
           background_check: false,
-          qpr_gatekeeper_training: false
+          application_received: false,
+          qpr_gatekeeper_training: false,
+          qpr_training_date: '',
+          qpr_training_renewal_date: '',
         })
         onSaved()
       }
@@ -95,13 +102,44 @@ export function AddCertificationDialog({ open, onOpenChange, personId, personNam
 
             <div className="flex items-center space-x-2">
               <Checkbox
+                id="application_received"
+                checked={formData.application_received}
+                onCheckedChange={(checked) => setFormData(prev => ({ ...prev, application_received: checked }))}
+              />
+              <Label htmlFor="application_received" className="cursor-pointer">
+                Application Received
+              </Label>
+            </div>
+
+            <div className="flex items-center space-x-2">
+              <Checkbox
                 id="qpr_gatekeeper_training"
                 checked={formData.qpr_gatekeeper_training}
                 onCheckedChange={(checked) => setFormData(prev => ({ ...prev, qpr_gatekeeper_training: checked }))}
               />
               <Label htmlFor="qpr_gatekeeper_training" className="cursor-pointer">
-                QPR Gatekeeper Training Complete
+                QPR Training Complete
               </Label>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="qpr_training_date">QPR Training Date</Label>
+              <Input
+                type="date"
+                id="qpr_training_date"
+                value={formData.qpr_training_date}
+                onChange={(e) => setFormData(prev => ({ ...prev, qpr_training_date: e.target.value }))}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="qpr_training_renewal_date">QPR Training Renewal Date</Label>
+              <Input
+                type="date"
+                id="qpr_training_renewal_date"
+                value={formData.qpr_training_renewal_date}
+                onChange={(e) => setFormData(prev => ({ ...prev, qpr_training_renewal_date: e.target.value }))}
+              />
             </div>
           </div>
 

@@ -1,6 +1,5 @@
 import { NextResponse } from 'next/server'
-import { writeFile, mkdir } from 'fs/promises'
-import path from 'path'
+import { put } from '@vercel/blob'
 import { get, run } from '@/lib/db'
 import { generateUniqueFilename } from '@/lib/utils'
 
@@ -28,22 +27,15 @@ export async function POST(request, { params }) {
       return NextResponse.json({ error: 'File too large. Maximum size is 10MB' }, { status: 400 })
     }
 
-    const uploadDir = path.join(process.cwd(), 'public', 'uploads', 'documents')
-    await mkdir(uploadDir, { recursive: true })
-
     const filename = generateUniqueFilename(file.name)
-    const filepath = path.join(uploadDir, filename)
-
-    await writeFile(filepath, buffer)
-
-    const attachmentPath = `/uploads/documents/${filename}`
+    const blob = await put(`documents/${filename}`, buffer, { access: 'public' })
 
     await run(
       'UPDATE certifications SET background_check_attachment_path = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?',
-      [attachmentPath, id]
+      [blob.url, id]
     )
 
-    return NextResponse.json({ background_check_attachment_path: attachmentPath })
+    return NextResponse.json({ background_check_attachment_path: blob.url })
   } catch (error) {
     console.error('Error uploading background check document:', error)
     return NextResponse.json({ error: 'Failed to upload background check document' }, { status: 500 })

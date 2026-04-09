@@ -107,9 +107,9 @@ export async function GET(request) {
     await sql`INSERT INTO person_schools (person_id, school_id) VALUES (${p6}, ${s3})`;
 
     // Seed certifications using actual IDs
-    await sql`INSERT INTO certifications (person_id, background_check_status, application_received, training_complete) VALUES (${p1}, 'approved', 1, 1)`;
-    await sql`INSERT INTO certifications (person_id, background_check_status, application_received, training_complete) VALUES (${p2}, 'approved', 1, 1)`;
-    await sql`INSERT INTO certifications (person_id, background_check_status, application_received, training_complete) VALUES (${p4}, 'pending', 1, 0)`;
+    await sql`INSERT INTO certifications (person_id, background_check_status, application_received, qpr_gatekeeper_training) VALUES (${p1}, 'approved', 1, 1)`;
+    await sql`INSERT INTO certifications (person_id, background_check_status, application_received, qpr_gatekeeper_training) VALUES (${p2}, 'approved', 1, 1)`;
+    await sql`INSERT INTO certifications (person_id, background_check_status, application_received, qpr_gatekeeper_training) VALUES (${p4}, 'pending', 1, 0)`;
 
     // Seed donations using actual IDs
     await sql`INSERT INTO donations (amount, date, note, company_id) VALUES (5000, '2024-01-15', 'Annual corporate donation', ${c1})`;

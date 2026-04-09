@@ -47,6 +47,8 @@ import {
   Users,
   TrendingUp,
   ArrowLeft,
+  Upload,
+  FileText,
 } from "lucide-react";
 import { AddCertificationDialog } from "@/components/certifications/add-certification-dialog";
 
@@ -89,9 +91,12 @@ export default function PersonDetailPage() {
   const [certificationData, setCertificationData] = useState({
     background_check_status: "pending",
     application_received: false,
-    training_complete: false,
+    qpr_gatekeeper_training: false,
+    qpr_training_date: "",
+    qpr_training_renewal_date: "",
   });
   const [showAddCertification, setShowAddCertification] = useState(false);
+  const [certUploadType, setCertUploadType] = useState(null);
 
   useEffect(() => {
     fetchPerson();
@@ -394,16 +399,45 @@ export default function PersonDetailPage() {
         background_check_status:
           person.certification.background_check_status || "pending",
         application_received: !!person.certification.application_received,
-        training_complete: !!person.certification.training_complete,
+        qpr_gatekeeper_training: !!person.certification.qpr_gatekeeper_training,
+        qpr_training_date: person.certification.qpr_training_date || "",
+        qpr_training_renewal_date: person.certification.qpr_training_renewal_date || "",
       });
     } else {
       setCertificationData({
         background_check_status: "pending",
         application_received: false,
-        training_complete: false,
+        qpr_gatekeeper_training: false,
+        qpr_training_date: "",
+        qpr_training_renewal_date: "",
       });
     }
     setIsEditingCertification(true);
+  };
+
+  const handleCertFileUpload = async (e) => {
+    const file = e.target.files[0];
+    if (!file || !person.certification) return;
+
+    const formData = new FormData();
+    formData.append("file", file);
+
+    try {
+      const res = await fetch(
+        `/api/certifications/${person.certification.id}/${certUploadType}`,
+        { method: "POST", body: formData }
+      );
+      if (!res.ok) throw new Error("Failed to upload file");
+      toast({ title: "File uploaded successfully" });
+      setCertUploadType(null);
+      fetchPerson();
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    }
   };
 
   const handleCreateNewCompany = async () => {
@@ -1186,73 +1220,178 @@ export default function PersonDetailPage() {
                   <Award className="h-5 w-5" />
                   Certification Status
                 </CardTitle>
-                {!person.certification && (
-                  <Button size="sm" onClick={() => setShowAddCertification(true)}>
-                    <Plus className="h-4 w-4 mr-1" />
-                    Add Certification
-                  </Button>
-                )}
+                <div className="flex items-center gap-2">
+                  {person.certification && !isEditingCertification && (
+                    <Button size="sm" variant="ghost" onClick={handleStartEditCertification}>
+                      <Pencil className="h-4 w-4" />
+                    </Button>
+                  )}
+                  {isEditingCertification && (
+                    <>
+                      <Button size="sm" variant="ghost" onClick={handleSaveCertification}>
+                        <Save className="h-4 w-4" />
+                      </Button>
+                      <Button size="sm" variant="ghost" onClick={() => setIsEditingCertification(false)}>
+                        <X className="h-4 w-4" />
+                      </Button>
+                    </>
+                  )}
+                  {!person.certification && (
+                    <Button size="sm" onClick={() => setShowAddCertification(true)}>
+                      <Plus className="h-4 w-4 mr-1" />
+                      Add Certification
+                    </Button>
+                  )}
+                </div>
               </CardHeader>
               <CardContent>
                 {person.certification ? (
-                  <div className="space-y-3">
-                    <div className="flex items-center justify-between p-3 border rounded-lg">
-                      <span>Background Check</span>
-                      <Badge
-                        variant={
-                          person.certification.background_check_status ===
-                          "approved"
-                            ? "success"
-                            : person.certification.background_check_status ===
-                              "pending"
-                            ? "warning"
-                            : person.certification.background_check_status ===
-                              "denied"
-                            ? "destructive"
-                            : "secondary"
-                        }
-                      >
-                        {person.certification.background_check_status ||
-                          "Not Started"}
-                      </Badge>
-                    </div>
-                    <div className="flex items-center justify-between p-3 border rounded-lg">
-                      <span>Application Received</span>
-                      <Badge
-                        variant={
-                          person.certification.application_received
-                            ? "success"
-                            : "secondary"
-                        }
-                      >
-                        {person.certification.application_received
-                          ? "Yes"
-                          : "No"}
-                      </Badge>
-                    </div>
-                    <div className="flex items-center justify-between p-3 border rounded-lg">
-                      <span>QPR Gatekeeper Training</span>
-                      <Badge
-                        variant={
-                          person.certification.qpr_gatekeeper_training
-                            ? "success"
-                            : "secondary"
-                        }
-                      >
-                        {person.certification.qpr_gatekeeper_training
-                          ? "Complete"
-                          : "Not Complete"}
-                      </Badge>
-                    </div>
-                    {person.certification.qpr_training_date && (
-                      <div className="flex items-center justify-between p-3 border rounded-lg">
-                        <span>Training Date</span>
-                        <span className="text-sm">
-                          {formatDate(person.certification.qpr_training_date)}
-                        </span>
+                  isEditingCertification ? (
+                    <div className="space-y-4">
+                      <div className="space-y-2">
+                        <Label>Background Check Status</Label>
+                        <Select
+                          value={certificationData.background_check_status}
+                          onValueChange={(value) =>
+                            setCertificationData({ ...certificationData, background_check_status: value })
+                          }
+                        >
+                          <SelectTrigger>
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="pending">Pending</SelectItem>
+                            <SelectItem value="approved">Approved</SelectItem>
+                            <SelectItem value="denied">Denied</SelectItem>
+                            <SelectItem value="expired">Expired</SelectItem>
+                          </SelectContent>
+                        </Select>
                       </div>
-                    )}
-                  </div>
+                      <div className="flex items-center space-x-2">
+                        <Checkbox
+                          id="edit-cert-app"
+                          checked={certificationData.application_received}
+                          onCheckedChange={(checked) =>
+                            setCertificationData({ ...certificationData, application_received: checked })
+                          }
+                        />
+                        <Label htmlFor="edit-cert-app">Application Received</Label>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <Checkbox
+                          id="edit-cert-qpr"
+                          checked={certificationData.qpr_gatekeeper_training}
+                          onCheckedChange={(checked) =>
+                            setCertificationData({ ...certificationData, qpr_gatekeeper_training: checked })
+                          }
+                        />
+                        <Label htmlFor="edit-cert-qpr">QPR Training Complete</Label>
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="edit-cert-date">QPR Training Date</Label>
+                        <Input
+                          type="date"
+                          id="edit-cert-date"
+                          value={certificationData.qpr_training_date}
+                          onChange={(e) =>
+                            setCertificationData({ ...certificationData, qpr_training_date: e.target.value })
+                          }
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="edit-cert-renewal">QPR Training Renewal Date</Label>
+                        <Input
+                          type="date"
+                          id="edit-cert-renewal"
+                          value={certificationData.qpr_training_renewal_date}
+                          onChange={(e) =>
+                            setCertificationData({ ...certificationData, qpr_training_renewal_date: e.target.value })
+                          }
+                        />
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between p-3 border rounded-lg">
+                        <span>Background Check</span>
+                        <div className="flex items-center gap-2">
+                          <Badge
+                            variant={
+                              person.certification.background_check_status === "approved"
+                                ? "success"
+                                : person.certification.background_check_status === "pending"
+                                ? "warning"
+                                : person.certification.background_check_status === "denied"
+                                ? "destructive"
+                                : "secondary"
+                            }
+                          >
+                            {person.certification.background_check_status || "Not Started"}
+                          </Badge>
+                          <Button size="sm" variant="ghost" onClick={() => setCertUploadType("background-check")}>
+                            <Upload className="h-3 w-3" />
+                          </Button>
+                          {person.certification.background_check_attachment_path && (
+                            <a href={person.certification.background_check_attachment_path} target="_blank" rel="noopener noreferrer">
+                              <FileText className="h-4 w-4 text-primary" />
+                            </a>
+                          )}
+                        </div>
+                      </div>
+                      <div className="flex items-center justify-between p-3 border rounded-lg">
+                        <span>Application Received</span>
+                        <div className="flex items-center gap-2">
+                          <Badge
+                            variant={person.certification.application_received ? "success" : "secondary"}
+                          >
+                            {person.certification.application_received ? "Yes" : "No"}
+                          </Badge>
+                          <Button size="sm" variant="ghost" onClick={() => setCertUploadType("application")}>
+                            <Upload className="h-3 w-3" />
+                          </Button>
+                          {person.certification.application_attachment_path && (
+                            <a href={person.certification.application_attachment_path} target="_blank" rel="noopener noreferrer">
+                              <FileText className="h-4 w-4 text-primary" />
+                            </a>
+                          )}
+                        </div>
+                      </div>
+                      <div className="flex items-center justify-between p-3 border rounded-lg">
+                        <span>QPR Training</span>
+                        <div className="flex items-center gap-2">
+                          <Badge
+                            variant={person.certification.qpr_gatekeeper_training ? "success" : "secondary"}
+                          >
+                            {person.certification.qpr_gatekeeper_training ? "Complete" : "Not Complete"}
+                          </Badge>
+                          <Button size="sm" variant="ghost" onClick={() => setCertUploadType("training")}>
+                            <Upload className="h-3 w-3" />
+                          </Button>
+                          {person.certification.qpr_training_attachment_path && (
+                            <a href={person.certification.qpr_training_attachment_path} target="_blank" rel="noopener noreferrer">
+                              <FileText className="h-4 w-4 text-primary" />
+                            </a>
+                          )}
+                        </div>
+                      </div>
+                      {person.certification.qpr_training_date && (
+                        <div className="flex items-center justify-between p-3 border rounded-lg">
+                          <span>Training Date</span>
+                          <span className="text-sm">
+                            {formatDate(person.certification.qpr_training_date)}
+                          </span>
+                        </div>
+                      )}
+                      {person.certification.qpr_training_renewal_date && (
+                        <div className="flex items-center justify-between p-3 border rounded-lg">
+                          <span>Renewal Date</span>
+                          <span className="text-sm">
+                            {formatDate(person.certification.qpr_training_renewal_date)}
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                  )
                 ) : (
                   <p className="text-muted-foreground text-center py-4">
                     No certification record. Click &quot;Add Certification&quot; to create one.
@@ -1260,6 +1399,37 @@ export default function PersonDetailPage() {
                 )}
               </CardContent>
             </Card>
+
+            {/* Certification Upload Dialog */}
+            <Dialog
+              open={!!certUploadType}
+              onOpenChange={() => setCertUploadType(null)}
+            >
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>
+                    Upload {certUploadType === "application" ? "Application" : certUploadType === "training" ? "Training" : "Background Check"} Document
+                  </DialogTitle>
+                </DialogHeader>
+                <div className="py-4">
+                  <Label htmlFor="cert-file">Select File</Label>
+                  <input
+                    id="cert-file"
+                    type="file"
+                    className="mt-2 block w-full text-sm text-muted-foreground
+                      file:mr-4 file:py-2 file:px-4
+                      file:rounded-md file:border-0
+                      file:text-sm file:font-semibold
+                      file:bg-primary file:text-primary-foreground
+                      hover:file:bg-primary/90"
+                    onChange={handleCertFileUpload}
+                  />
+                  <p className="mt-2 text-sm text-muted-foreground">
+                    Maximum file size: 10MB
+                  </p>
+                </div>
+              </DialogContent>
+            </Dialog>
 
             {/* Notes Section */}
             <div>
