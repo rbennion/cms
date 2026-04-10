@@ -1,8 +1,14 @@
 import { NextResponse } from 'next/server'
 import { all, run, get } from '@/lib/db'
+import { requireAuth } from '@/lib/api-auth'
+
+export const dynamic = 'force-dynamic'
 
 export async function GET(request) {
   try {
+    const { session, error } = await requireAuth()
+    if (error) return error
+
     const { searchParams } = new URL(request.url)
     const entityType = searchParams.get('entity_type')
     const entityId = searchParams.get('entity_id')
@@ -33,6 +39,9 @@ export async function GET(request) {
 
 export async function POST(request) {
   try {
+    const { session, error } = await requireAuth()
+    if (error) return error
+
     const body = await request.json()
     const { title, content, date, entity_type, entity_id } = body
 

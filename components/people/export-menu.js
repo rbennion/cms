@@ -15,21 +15,18 @@ export function ExportMenu({ filters }) {
   const [showEmailDialog, setShowEmailDialog] = useState(false)
   const [emails, setEmails] = useState([])
 
-  function buildQueryString() {
-    const params = new URLSearchParams()
-    if (filters.search) params.set('search', filters.search)
-    if (filters.type && filters.type !== 'all') params.set('type', filters.type)
-    if (filters.schoolId && filters.schoolId !== 'all') params.set('school_id', filters.schoolId)
-    if (filters.companyId && filters.companyId !== 'all') params.set('company_id', filters.companyId)
-    if (filters.isFcCertified && filters.isFcCertified !== 'all') params.set('is_fc_certified', filters.isFcCertified)
-    return params.toString()
+  function buildExportUrl(format) {
+    const params = new URLSearchParams({ entityType: 'people', format })
+    const filterObj = {}
+    if (filters.search) filterObj.search = filters.search
+    if (Object.keys(filterObj).length > 0) {
+      params.set('filters', JSON.stringify(filterObj))
+    }
+    return `/api/export?${params.toString()}`
   }
 
   async function handleExportCSV() {
-    const queryString = buildQueryString()
-    const url = `/api/people/export?format=csv${queryString ? '&' + queryString : ''}`
-
-    const res = await fetch(url)
+    const res = await fetch(buildExportUrl('csv'))
     if (res.ok) {
       const blob = await res.blob()
       const downloadUrl = window.URL.createObjectURL(blob)
@@ -44,13 +41,11 @@ export function ExportMenu({ filters }) {
   }
 
   async function handleExportEmails() {
-    const queryString = buildQueryString()
-    const url = `/api/people/export?format=email${queryString ? '&' + queryString : ''}`
-
-    const res = await fetch(url)
+    const res = await fetch(buildExportUrl('email'))
     if (res.ok) {
-      const data = await res.json()
-      setEmails(data.emails || [])
+      const text = await res.text()
+      const parsed = text.split('; ').filter(Boolean)
+      setEmails(parsed)
       setShowEmailDialog(true)
     }
   }

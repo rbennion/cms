@@ -1,7 +1,9 @@
 import { NextResponse } from "next/server";
-import { sql } from "@/lib/db";
+import { get, run } from "@/lib/db";
 import { auth } from "@/lib/auth";
 import bcrypt from "bcryptjs";
+
+export const dynamic = 'force-dynamic'
 
 export async function POST(request) {
   try {
@@ -28,15 +30,14 @@ export async function POST(request) {
     }
 
     // Get user's current password hash
-    const userResult = await sql`
-      SELECT id, password_hash FROM users WHERE id = ${session.user.id}
-    `;
+    const user = await get(
+      "SELECT id, password_hash FROM users WHERE id = ?",
+      [session.user.id]
+    );
 
-    if (userResult.rows.length === 0) {
+    if (!user) {
       return NextResponse.json({ error: "User not found" }, { status: 404 });
     }
-
-    const user = userResult.rows[0];
 
     // Verify current password
     const isValidPassword = await bcrypt.compare(
@@ -55,11 +56,10 @@ export async function POST(request) {
     const newPasswordHash = await bcrypt.hash(newPassword, 12);
 
     // Update password
-    await sql`
-      UPDATE users
-      SET password_hash = ${newPasswordHash}, updated_at = CURRENT_TIMESTAMP
-      WHERE id = ${session.user.id}
-    `;
+    await run(
+      "UPDATE users SET password_hash = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
+      [newPasswordHash, session.user.id]
+    );
 
     return NextResponse.json({
       success: true,

@@ -3,9 +3,15 @@ import { writeFile, mkdir } from 'fs/promises'
 import path from 'path'
 import { get, run } from '@/lib/db'
 import { generateUniqueFilename } from '@/lib/utils'
+import { requireAuth } from "@/lib/api-auth"
+
+export const dynamic = 'force-dynamic'
 
 export async function POST(request, { params }) {
   try {
+    const { session, error } = await requireAuth()
+    if (error) return error
+
     const { id } = await params
 
     const person = await get('SELECT * FROM people WHERE id = ?', [id])

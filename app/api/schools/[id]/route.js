@@ -1,11 +1,16 @@
 import { NextResponse } from "next/server";
 import { all, run, get } from "@/lib/db";
+import { requireAuth } from "@/lib/api-auth";
 
 export const dynamic = "force-dynamic";
 
 export async function GET(request, { params }) {
   try {
-    const school = await get("SELECT * FROM schools WHERE id = ?", [params.id]);
+    const { session, error } = await requireAuth()
+    if (error) return error
+
+    const { id } = await params;
+    const school = await get("SELECT * FROM schools WHERE id = ?", [id]);
 
     if (!school) {
       return NextResponse.json({ error: "School not found" }, { status: 404 });
@@ -17,14 +22,14 @@ export async function GET(request, { params }) {
        JOIN person_schools ps ON p.id = ps.person_id
        WHERE ps.school_id = ?
        ORDER BY p.last_name, p.first_name`,
-      [params.id]
+      [id]
     );
 
     const notes = await all(
       `SELECT * FROM notes
        WHERE entity_type = 'school' AND entity_id = ?
        ORDER BY date DESC`,
-      [params.id]
+      [id]
     );
 
     return NextResponse.json({ ...school, people, notes });
@@ -39,6 +44,10 @@ export async function GET(request, { params }) {
 
 export async function PUT(request, { params }) {
   try {
+    const { session, error } = await requireAuth()
+    if (error) return error
+
+    const { id } = await params;
     const body = await request.json();
     const { name, address, city, state, zip } = body;
 
@@ -54,11 +63,11 @@ export async function PUT(request, { params }) {
         city || null,
         state || null,
         zip || null,
-        params.id,
+        id,
       ]
     );
 
-    const school = await get("SELECT * FROM schools WHERE id = ?", [params.id]);
+    const school = await get("SELECT * FROM schools WHERE id = ?", [id]);
 
     return NextResponse.json(school);
   } catch (error) {
@@ -72,12 +81,16 @@ export async function PUT(request, { params }) {
 
 export async function DELETE(request, { params }) {
   try {
-    await run("DELETE FROM person_schools WHERE school_id = ?", [params.id]);
+    const { session, error } = await requireAuth()
+    if (error) return error
+
+    const { id } = await params;
+    await run("DELETE FROM person_schools WHERE school_id = ?", [id]);
     await run("DELETE FROM notes WHERE entity_type = ? AND entity_id = ?", [
       "school",
-      params.id,
+      id,
     ]);
-    await run("DELETE FROM schools WHERE id = ?", [params.id]);
+    await run("DELETE FROM schools WHERE id = ?", [id]);
 
     return NextResponse.json({ success: true });
   } catch (error) {

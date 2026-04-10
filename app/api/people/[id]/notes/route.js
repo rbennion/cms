@@ -1,8 +1,14 @@
 import { NextResponse } from 'next/server'
 import { all } from '@/lib/db'
+import { requireAuth } from "@/lib/api-auth"
+
+export const dynamic = 'force-dynamic'
 
 export async function GET(request, { params }) {
   try {
+    const { session, error } = await requireAuth()
+    if (error) return error
+
     const { id } = await params
 
     const notes = await all(`

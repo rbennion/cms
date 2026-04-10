@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { sql } from "@/lib/db";
+import { get, all, run } from "@/lib/db";
 import { auth } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
@@ -14,26 +14,24 @@ export async function GET(request, { params }) {
 
     const { id } = await params;
 
-    const result = await sql`
-      SELECT id, email, name, is_active, is_admin, created_at, updated_at
-      FROM users
-      WHERE id = ${id}
-    `;
+    const user = await get(
+      "SELECT id, email, name, is_active, is_admin, created_at, updated_at FROM users WHERE id = ?",
+      [id]
+    );
 
-    if (result.rows.length === 0) {
+    if (!user) {
       return NextResponse.json({ error: "User not found" }, { status: 404 });
     }
 
     // Get user permissions
-    const permissions = await sql`
-      SELECT entity_type, can_create, can_read, can_update, can_delete
-      FROM user_permissions
-      WHERE user_id = ${id}
-    `;
+    const permissions = await all(
+      "SELECT entity_type, can_create, can_read, can_update, can_delete FROM user_permissions WHERE user_id = ?",
+      [id]
+    );
 
     return NextResponse.json({
-      ...result.rows[0],
-      permissions: permissions.rows,
+      ...user,
+      permissions,
     });
   } catch (error) {
     console.error("Error fetching user:", error);
@@ -57,32 +55,30 @@ export async function PUT(request, { params }) {
       await request.json();
 
     // Update user
-    const result = await sql`
-      UPDATE users
-      SET name = ${name}, email = ${email}, is_active = ${is_active}, is_admin = ${is_admin}, updated_at = CURRENT_TIMESTAMP
-      WHERE id = ${id}
-      RETURNING id, email, name, is_active, is_admin, created_at, updated_at
-    `;
+    const user = await get(
+      "UPDATE users SET name = ?, email = ?, is_active = ?, is_admin = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ? RETURNING id, email, name, is_active, is_admin, created_at, updated_at",
+      [name, email, is_active, is_admin, id]
+    );
 
-    if (result.rows.length === 0) {
+    if (!user) {
       return NextResponse.json({ error: "User not found" }, { status: 404 });
     }
 
     // Update permissions if provided
     if (permissions && Array.isArray(permissions)) {
       // Delete existing permissions
-      await sql`DELETE FROM user_permissions WHERE user_id = ${id}`;
+      await run("DELETE FROM user_permissions WHERE user_id = ?", [id]);
 
       // Insert new permissions
       for (const perm of permissions) {
-        await sql`
-          INSERT INTO user_permissions (user_id, entity_type, can_create, can_read, can_update, can_delete)
-          VALUES (${id}, ${perm.entity_type}, ${perm.can_create}, ${perm.can_read}, ${perm.can_update}, ${perm.can_delete})
-        `;
+        await run(
+          "INSERT INTO user_permissions (user_id, entity_type, can_create, can_read, can_update, can_delete) VALUES (?, ?, ?, ?, ?, ?)",
+          [id, perm.entity_type, perm.can_create, perm.can_read, perm.can_update, perm.can_delete]
+        );
       }
     }
 
-    return NextResponse.json(result.rows[0]);
+    return NextResponse.json(user);
   } catch (error) {
     console.error("Error updating user:", error);
     return NextResponse.json(
@@ -110,7 +106,7 @@ export async function DELETE(request, { params }) {
       );
     }
 
-    await sql`DELETE FROM users WHERE id = ${id}`;
+    await run("DELETE FROM users WHERE id = ?", [id]);
 
     return NextResponse.json({ success: true });
   } catch (error) {

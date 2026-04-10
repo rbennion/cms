@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { sql } from "@/lib/db";
+import { get, all, run } from "@/lib/db";
 import bcrypt from "bcryptjs";
 
 export async function POST(request) {
@@ -21,11 +21,9 @@ export async function POST(request) {
     }
 
     // Check if email already exists
-    const existing = await sql`
-      SELECT id FROM users WHERE email = ${email}
-    `;
+    const existing = await all("SELECT id FROM users WHERE email = ?", [email]);
 
-    if (existing.rows.length > 0) {
+    if (existing.length > 0) {
       return NextResponse.json(
         { error: "An account with this email already exists" },
         { status: 400 }
@@ -36,17 +34,14 @@ export async function POST(request) {
     const passwordHash = await bcrypt.hash(password, 12);
 
     // Check if this is the first user - make them admin and active
-    const userCount = await sql`SELECT COUNT(*) as count FROM users`;
-    const isFirstUser = parseInt(userCount.rows[0].count) === 0;
+    const countRow = await get("SELECT COUNT(*) as count FROM users");
+    const isFirstUser = parseInt(countRow.count) === 0;
 
     // Create user
-    const result = await sql`
-      INSERT INTO users (email, password_hash, name, is_active, is_admin)
-      VALUES (${email}, ${passwordHash}, ${name}, ${isFirstUser}, ${isFirstUser})
-      RETURNING id, email, name, is_active, is_admin
-    `;
-
-    const user = result.rows[0];
+    const user = await get(
+      "INSERT INTO users (email, password_hash, name, is_active, is_admin) VALUES (?, ?, ?, ?, ?) RETURNING id, email, name, is_active, is_admin",
+      [email, passwordHash, name, isFirstUser, isFirstUser]
+    );
 
     return NextResponse.json(
       {

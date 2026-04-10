@@ -37,3 +37,7 @@ database.sqlite
 # Uploads (user uploaded files)
 /public/uploads/*
 !/public/uploads/.gitkeep
+
+# Database backups
+/backups/*
+!/backups/.gitkeep

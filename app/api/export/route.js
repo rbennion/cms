@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { sql } from "@/lib/db";
+import { all } from "@/lib/db";
 import { auth } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
@@ -31,30 +31,24 @@ export async function GET(request) {
     if (entityType === "people") {
       let query = `
         SELECT p.id, p.first_name, p.last_name, p.email, p.phone,
-               p.title, p.address, p.city, p.state, p.zip,
-               p.is_board_member
+               p.title, p.address, p.city, p.state, p.zip
         FROM people p
         WHERE 1=1
       `;
       const params = [];
 
       if (filters.search) {
-        query += ` AND (p.first_name ILIKE $${
-          params.length + 1
-        } OR p.last_name ILIKE $${params.length + 2} OR p.email ILIKE $${
-          params.length + 3
-        })`;
+        query += ` AND (p.first_name ILIKE ? OR p.last_name ILIKE ? OR p.email ILIKE ?)`;
         const searchTerm = `%${filters.search}%`;
         params.push(searchTerm, searchTerm, searchTerm);
       }
 
       query += " ORDER BY p.last_name, p.first_name";
 
-      const result = await sql.query(query, params);
-      data = result.rows;
+      data = await all(query, params);
 
       // Fetch family members for all people
-      const familyResult = await sql.query(`
+      const familyRows = await all(`
         SELECT fr.person_id, p.first_name, p.last_name
         FROM family_relationships fr
         JOIN people p ON fr.related_person_id = p.id
@@ -63,7 +57,7 @@ export async function GET(request) {
 
       // Build a map of person_id -> "FirstName1 LastName1; FirstName2 LastName2"
       const familyMap = {};
-      for (const row of familyResult.rows) {
+      for (const row of familyRows) {
         if (!familyMap[row.person_id]) {
           familyMap[row.person_id] = [];
         }
@@ -88,7 +82,6 @@ export async function GET(request) {
         "city",
         "state",
         "zip",
-        "is_board_member",
         "family_members",
       ];
     } else if (entityType === "companies") {
@@ -100,14 +93,13 @@ export async function GET(request) {
       const params = [];
 
       if (filters.search) {
-        query += ` AND name ILIKE $${params.length + 1}`;
+        query += ` AND name ILIKE ?`;
         params.push(`%${filters.search}%`);
       }
 
       query += " ORDER BY name";
 
-      const result = await sql.query(query, params);
-      data = result.rows;
+      data = await all(query, params);
       columns = [
         "id",
         "name",
@@ -127,14 +119,13 @@ export async function GET(request) {
       const params = [];
 
       if (filters.search) {
-        query += ` AND name ILIKE $${params.length + 1}`;
+        query += ` AND name ILIKE ?`;
         params.push(`%${filters.search}%`);
       }
 
       query += " ORDER BY name";
 
-      const result = await sql.query(query, params);
-      data = result.rows;
+      data = await all(query, params);
       columns = ["id", "name", "address", "city", "state", "zip"];
     } else if (entityType === "donations") {
       let query = `
@@ -149,11 +140,7 @@ export async function GET(request) {
       const params = [];
 
       if (filters.search) {
-        query += ` AND (p.first_name ILIKE $${
-          params.length + 1
-        } OR p.last_name ILIKE $${params.length + 2} OR c.name ILIKE $${
-          params.length + 3
-        } OR d.note ILIKE $${params.length + 4})`;
+        query += ` AND (p.first_name ILIKE ? OR p.last_name ILIKE ? OR c.name ILIKE ? OR d.note ILIKE ?)`;
         const searchTerm = `%${filters.search}%`;
         params.push(searchTerm, searchTerm, searchTerm, searchTerm);
       }
@@ -165,19 +152,18 @@ export async function GET(request) {
       }
 
       if (filters.start_date) {
-        query += ` AND d.date >= $${params.length + 1}`;
+        query += ` AND d.date >= ?`;
         params.push(filters.start_date);
       }
 
       if (filters.end_date) {
-        query += ` AND d.date <= $${params.length + 1}`;
+        query += ` AND d.date <= ?`;
         params.push(filters.end_date);
       }
 
       query += " ORDER BY d.date DESC";
 
-      const result = await sql.query(query, params);
-      data = result.rows;
+      data = await all(query, params);
       columns = [
         "id",
         "date",
@@ -201,32 +187,29 @@ export async function GET(request) {
       const params = [];
 
       if (filters.search) {
-        query += ` AND (g.name ILIKE $${params.length + 1} OR s.name ILIKE $${
-          params.length + 2
-        })`;
+        query += ` AND (g.name ILIKE ? OR s.name ILIKE ?)`;
         const searchTerm = `%${filters.search}%`;
         params.push(searchTerm, searchTerm);
       }
 
       if (filters.status) {
-        query += ` AND g.status = $${params.length + 1}`;
+        query += ` AND g.status = ?`;
         params.push(filters.status);
       }
 
       if (filters.school_id) {
-        query += ` AND g.school_id = $${params.length + 1}`;
+        query += ` AND g.school_id = ?`;
         params.push(filters.school_id);
       }
 
       if (filters.gender) {
-        query += ` AND g.gender = $${params.length + 1}`;
+        query += ` AND g.gender = ?`;
         params.push(filters.gender);
       }
 
       query += " ORDER BY s.name, g.name";
 
-      const result = await sql.query(query, params);
-      data = result.rows;
+      data = await all(query, params);
 
       // Format primary_leader_name
       for (const row of data) {

@@ -2,9 +2,15 @@ import { NextResponse } from 'next/server'
 import { put } from '@vercel/blob'
 import { get, run } from '@/lib/db'
 import { generateUniqueFilename } from '@/lib/utils'
+import { requireAuth } from '@/lib/api-auth'
+
+export const dynamic = 'force-dynamic'
 
 export async function POST(request, { params }) {
   try {
+    const { session, error } = await requireAuth()
+    if (error) return error
+
     const { id } = await params
 
     const certification = await get('SELECT * FROM certifications WHERE id = ?', [id])
@@ -17,6 +23,13 @@ export async function POST(request, { params }) {
 
     if (!file) {
       return NextResponse.json({ error: 'No file provided' }, { status: 400 })
+    }
+
+    const allowedTypes = ['application/pdf', 'image/jpeg', 'image/png', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document']
+    const allowedExtensions = ['.pdf', '.jpg', '.jpeg', '.png', '.doc', '.docx']
+    const ext = '.' + file.name.split('.').pop().toLowerCase()
+    if (!allowedTypes.includes(file.type) || !allowedExtensions.includes(ext)) {
+      return NextResponse.json({ error: 'Invalid file type. Allowed: PDF, JPG, PNG, DOC, DOCX' }, { status: 400 })
     }
 
     const bytes = await file.arrayBuffer()

@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { sql } from "@/lib/db";
+import { get, run } from "@/lib/db";
 import bcrypt from "bcryptjs";
 
 export async function POST(request) {
@@ -21,39 +21,32 @@ export async function POST(request) {
     }
 
     // Find valid token
-    const tokenResult = await sql`
-      SELECT id, user_id, expires_at
-      FROM password_reset_tokens
-      WHERE token = ${token}
-      AND used = false
-      AND expires_at > NOW()
-    `;
+    const resetToken = await get(
+      "SELECT id, user_id, expires_at FROM password_reset_tokens WHERE token = ? AND used = false AND expires_at > NOW()",
+      [token]
+    );
 
-    if (tokenResult.rows.length === 0) {
+    if (!resetToken) {
       return NextResponse.json(
         { error: "Invalid or expired reset link" },
         { status: 400 }
       );
     }
 
-    const resetToken = tokenResult.rows[0];
-
     // Hash new password
     const passwordHash = await bcrypt.hash(password, 12);
 
     // Update user password
-    await sql`
-      UPDATE users
-      SET password_hash = ${passwordHash}, updated_at = CURRENT_TIMESTAMP
-      WHERE id = ${resetToken.user_id}
-    `;
+    await run(
+      "UPDATE users SET password_hash = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
+      [passwordHash, resetToken.user_id]
+    );
 
     // Mark token as used
-    await sql`
-      UPDATE password_reset_tokens
-      SET used = true
-      WHERE id = ${resetToken.id}
-    `;
+    await run(
+      "UPDATE password_reset_tokens SET used = true WHERE id = ?",
+      [resetToken.id]
+    );
 
     return NextResponse.json({
       success: true,

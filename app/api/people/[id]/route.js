@@ -1,8 +1,14 @@
 import { NextResponse } from "next/server";
 import { get, run, all } from "@/lib/db";
+import { requireAuth } from "@/lib/api-auth";
+
+export const dynamic = 'force-dynamic'
 
 export async function GET(request, { params }) {
   try {
+    const { session, error } = await requireAuth()
+    if (error) return error
+
     const { id } = await params;
 
     const person = await get(
@@ -123,6 +129,9 @@ export async function GET(request, { params }) {
 
 export async function PUT(request, { params }) {
   try {
+    const { session, error } = await requireAuth()
+    if (error) return error
+
     const { id } = await params;
     const body = await request.json();
     const {
@@ -275,6 +284,9 @@ export async function PUT(request, { params }) {
 
 export async function DELETE(request, { params }) {
   try {
+    const { session, error } = await requireAuth()
+    if (error) return error
+
     const { id } = await params;
 
     const existing = await get("SELECT * FROM people WHERE id = ?", [id]);

@@ -1,10 +1,14 @@
 import { NextResponse } from 'next/server'
 import { all, run, get } from '@/lib/db'
+import { requireAuth } from '@/lib/api-auth'
 
 export const dynamic = 'force-dynamic'
 
 export async function GET(request, { params }) {
   try {
+    const { session, error } = await requireAuth()
+    if (error) return error
+
     const { id } = await params
 
     // Verify group exists
@@ -28,6 +32,9 @@ export async function GET(request, { params }) {
 
 export async function POST(request, { params }) {
   try {
+    const { session, error } = await requireAuth()
+    if (error) return error
+
     const { id } = await params
     const body = await request.json()
     const { name, address, city, state, zip, is_primary } = body
@@ -63,6 +70,9 @@ export async function POST(request, { params }) {
 
 export async function DELETE(request, { params }) {
   try {
+    const { session, error } = await requireAuth()
+    if (error) return error
+
     const { id } = await params
     const { searchParams } = new URL(request.url)
     const locationId = searchParams.get('location_id')

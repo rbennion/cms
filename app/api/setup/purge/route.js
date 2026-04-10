@@ -1,10 +1,14 @@
 import { NextResponse } from "next/server";
-import { sql } from "@/lib/db";
+import { run } from "@/lib/db";
+import { requireAdmin } from "@/lib/api-auth";
 
 export const dynamic = "force-dynamic";
 
 export async function POST(request) {
   try {
+    const { session, error } = await requireAdmin()
+    if (error) return error
+
     // Check for SETUP_SECRET if configured
     const setupSecret = process.env.SETUP_SECRET;
     if (setupSecret) {
@@ -17,22 +21,22 @@ export async function POST(request) {
 
     // Delete in order respecting foreign key constraints
     // First delete junction tables and dependent tables
-    await sql`DELETE FROM person_type_assignments`;
-    await sql`DELETE FROM person_companies`;
-    await sql`DELETE FROM person_schools`;
-    await sql`DELETE FROM certifications`;
-    await sql`DELETE FROM notes`;
-    await sql`DELETE FROM donations`;
+    await run("DELETE FROM person_type_assignments");
+    await run("DELETE FROM person_companies");
+    await run("DELETE FROM person_schools");
+    await run("DELETE FROM certifications");
+    await run("DELETE FROM notes");
+    await run("DELETE FROM donations");
 
     // Then delete main tables
-    await sql`DELETE FROM people`;
-    await sql`DELETE FROM companies`;
-    await sql`DELETE FROM schools`;
+    await run("DELETE FROM people");
+    await run("DELETE FROM companies");
+    await run("DELETE FROM schools");
 
     // Keep person_types but reset to defaults
-    await sql`DELETE FROM person_types`;
-    await sql`INSERT INTO person_types (name) VALUES ('Lead') ON CONFLICT (name) DO NOTHING`;
-    await sql`INSERT INTO person_types (name) VALUES ('Interested') ON CONFLICT (name) DO NOTHING`;
+    await run("DELETE FROM person_types");
+    await run("INSERT INTO person_types (name) VALUES (?) ON CONFLICT (name) DO NOTHING", ['Lead']);
+    await run("INSERT INTO person_types (name) VALUES (?) ON CONFLICT (name) DO NOTHING", ['Interested']);
 
     return NextResponse.json({
       success: true,

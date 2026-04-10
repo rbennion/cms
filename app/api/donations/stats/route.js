@@ -1,11 +1,15 @@
 import { NextResponse } from 'next/server'
 import { get, all } from '@/lib/db'
+import { requireAuth } from '@/lib/api-auth'
 
 // Prevent static generation during build
 export const dynamic = 'force-dynamic'
 
 export async function GET() {
   try {
+    const { session, error } = await requireAuth()
+    if (error) return error
+
     const currentYear = new Date().getFullYear()
     const yearStart = `${currentYear}-01-01`
 

@@ -1,8 +1,14 @@
 import { NextResponse } from "next/server";
 import { all, run, get } from "@/lib/db";
+import { requireAuth } from "@/lib/api-auth";
+
+export const dynamic = 'force-dynamic'
 
 export async function GET() {
   try {
+    const { session, error } = await requireAuth();
+    if (error) return error;
+
     const stages = await all(
       "SELECT * FROM engagement_stages ORDER BY sort_order, name"
     );
@@ -18,6 +24,9 @@ export async function GET() {
 
 export async function POST(request) {
   try {
+    const { session, error } = await requireAuth();
+    if (error) return error;
+
     const body = await request.json();
     const { name } = body;
 

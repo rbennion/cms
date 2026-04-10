@@ -1,8 +1,14 @@
 import { NextResponse } from 'next/server'
 import { get, run } from '@/lib/db'
+import { requireAuth } from '@/lib/api-auth'
+
+export const dynamic = 'force-dynamic'
 
 export async function GET(request, { params }) {
   try {
+    const { session, error } = await requireAuth()
+    if (error) return error
+
     const { id } = await params
 
     const donation = await get(`
@@ -28,6 +34,9 @@ export async function GET(request, { params }) {
 
 export async function PUT(request, { params }) {
   try {
+    const { session, error } = await requireAuth()
+    if (error) return error
+
     const { id } = await params
     const body = await request.json()
     const { amount, date, note, person_id, company_id } = body
@@ -66,6 +75,9 @@ export async function PUT(request, { params }) {
 
 export async function DELETE(request, { params }) {
   try {
+    const { session, error } = await requireAuth()
+    if (error) return error
+
     const { id } = await params
 
     const existing = await get('SELECT * FROM donations WHERE id = ?', [id])

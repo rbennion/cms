@@ -4,6 +4,36 @@ All notable changes to the Fight Club CRM application will be documented in this
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.6.1] - 2026-04-10
+
+### Security
+- Auth checks on all 44 API routes (requireAuth/requireAdmin)
+- File type validation on certification document uploads (PDF, JPG, PNG, DOC, DOCX only)
+- Admin-only gating on setup, debug, and purge endpoints
+
+### Added
+- Database migration system with numbered SQL files and version tracking (`npm run migrate`)
+- Backup/restore scripts with pg_dump rotation and Neon production safety guards (`npm run backup`)
+- Migrations run automatically during Vercel builds (pre-build step)
+- `BACKUP.md` operational runbook
+
+### Changed
+- All remaining `sql` tagged template calls migrated to `get()/all()/run()` helpers
+- Export endpoint consolidated to `/api/export` (removed duplicate `/api/people/export`)
+- Setup route simplified to point at migration system (no more inline DDL)
+
+### Fixed
+- Production schema drift: certifications column renames applied via migration 002
+- `params.id` async access in schools/companies detail routes
+- Stale column references (is_donor, is_fc_certified) removed from seed data and exports
+
+### Removed
+- `lib/init-db.js`, `lib/reset-db.js` (replaced by `scripts/migrate.js`, `scripts/reset-db.js`)
+- Ad-hoc migration routes (`/api/setup/migrate`, `/api/setup/migrate-roles`)
+- Duplicate schools settings pages (`/settings/schools/`)
+- Unused tabs component and `@radix-ui/react-tabs` dependency
+- `lib/import-csv.js` and `/api/setup/import-csv` (stale column references)
+
 ## [0.6.0] - 2026-04-09
 
 ### Added

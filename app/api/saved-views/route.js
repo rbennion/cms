@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { sql } from "@/lib/db";
+import { get, all } from "@/lib/db";
 import { auth } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
@@ -16,27 +16,22 @@ export async function GET(request) {
 
     const userId = parseInt(session.user.id);
 
-    let result;
+    let rows;
     if (entityType) {
       // Get views for specific entity type (user's own + shared)
-      result = await sql`
-        SELECT id, user_id, name, entity_type, filter_state, is_shared, created_at
-        FROM saved_views
-        WHERE entity_type = ${entityType}
-        AND (user_id = ${userId} OR is_shared = true)
-        ORDER BY name
-      `;
+      rows = await all(
+        "SELECT id, user_id, name, entity_type, filter_state, is_shared, created_at FROM saved_views WHERE entity_type = ? AND (user_id = ? OR is_shared = true) ORDER BY name",
+        [entityType, userId]
+      );
     } else {
       // Get all views for current user
-      result = await sql`
-        SELECT id, user_id, name, entity_type, filter_state, is_shared, created_at
-        FROM saved_views
-        WHERE user_id = ${userId} OR is_shared = true
-        ORDER BY entity_type, name
-      `;
+      rows = await all(
+        "SELECT id, user_id, name, entity_type, filter_state, is_shared, created_at FROM saved_views WHERE user_id = ? OR is_shared = true ORDER BY entity_type, name",
+        [userId]
+      );
     }
 
-    return NextResponse.json(result.rows);
+    return NextResponse.json(rows);
   } catch (error) {
     console.error("Error fetching saved views:", error);
     return NextResponse.json(
@@ -64,13 +59,12 @@ export async function POST(request) {
 
     const userId = parseInt(session.user.id);
 
-    const result = await sql`
-      INSERT INTO saved_views (user_id, name, entity_type, filter_state, is_shared)
-      VALUES (${userId}, ${name}, ${entity_type}, ${JSON.stringify(filter_state || {})}, ${is_shared || false})
-      RETURNING id, user_id, name, entity_type, filter_state, is_shared, created_at
-    `;
+    const row = await get(
+      "INSERT INTO saved_views (user_id, name, entity_type, filter_state, is_shared) VALUES (?, ?, ?, ?, ?) RETURNING id, user_id, name, entity_type, filter_state, is_shared, created_at",
+      [userId, name, entity_type, JSON.stringify(filter_state || {}), is_shared || false]
+    );
 
-    return NextResponse.json(result.rows[0], { status: 201 });
+    return NextResponse.json(row, { status: 201 });
   } catch (error) {
     console.error("Error creating saved view:", error);
     return NextResponse.json(

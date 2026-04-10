@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { sql } from "@/lib/db";
+import { get, all, run } from "@/lib/db";
 import { auth } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
@@ -83,62 +83,58 @@ export async function POST(request) {
           }
 
           // Check for duplicate
-          const existing = await sql`
-            SELECT id FROM people
-            WHERE LOWER(first_name) = LOWER(${firstName})
-            AND LOWER(last_name) = LOWER(${lastName})
-          `;
+          const existing = await all(
+            "SELECT id FROM people WHERE LOWER(first_name) = LOWER(?) AND LOWER(last_name) = LOWER(?)",
+            [firstName, lastName]
+          );
 
-          if (existing.rows.length > 0) {
+          if (existing.length > 0) {
             skipped++;
             continue;
           }
 
-          const insertResult = await sql`
-            INSERT INTO people (first_name, last_name, email, phone, title, address, city, state, zip)
-            VALUES (
-              ${firstName},
-              ${lastName},
-              ${row[mapping.email] || null},
-              ${row[mapping.phone] || null},
-              ${row[mapping.title] || null},
-              ${row[mapping.address] || null},
-              ${row[mapping.city] || null},
-              ${row[mapping.state] || null},
-              ${row[mapping.zip] || null}
-            )
-            RETURNING id
-          `;
+          const insertResult = await run(
+            `INSERT INTO people (first_name, last_name, email, phone, title, address, city, state, zip)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            RETURNING id`,
+            [
+              firstName,
+              lastName,
+              row[mapping.email] || null,
+              row[mapping.phone] || null,
+              row[mapping.title] || null,
+              row[mapping.address] || null,
+              row[mapping.city] || null,
+              row[mapping.state] || null,
+              row[mapping.zip] || null,
+            ]
+          );
 
           // Handle family_members if mapped
           const familyStr = mapping.family_members ? row[mapping.family_members] : "";
-          if (familyStr && insertResult.rows[0]) {
-            const personId = insertResult.rows[0].id;
+          if (familyStr && insertResult.lastInsertRowid) {
+            const personId = insertResult.lastInsertRowid;
             const familyNames = familyStr.split(";").map((n) => n.trim()).filter(Boolean);
             for (const fullName of familyNames) {
               const parts = fullName.split(/\s+/);
               if (parts.length < 2) continue;
               const fFirst = parts[0];
               const fLast = parts.slice(1).join(" ");
-              const relatedPerson = await sql`
-                SELECT id FROM people
-                WHERE LOWER(first_name) = LOWER(${fFirst})
-                AND LOWER(last_name) = LOWER(${fLast})
-                LIMIT 1
-              `;
-              if (relatedPerson.rows.length > 0) {
-                const relatedId = relatedPerson.rows[0].id;
+              const relatedPerson = await get(
+                "SELECT id FROM people WHERE LOWER(first_name) = LOWER(?) AND LOWER(last_name) = LOWER(?) LIMIT 1",
+                [fFirst, fLast]
+              );
+              if (relatedPerson) {
+                const relatedId = relatedPerson.id;
                 // Insert both directions of the relationship
-                await sql`
-                  INSERT INTO family_relationships (person_id, related_person_id)
-                  VALUES (${personId}, ${relatedId})
-                  ON CONFLICT DO NOTHING
-                `;
-                await sql`
-                  INSERT INTO family_relationships (person_id, related_person_id)
-                  VALUES (${relatedId}, ${personId})
-                  ON CONFLICT DO NOTHING
-                `;
+                await run(
+                  "INSERT INTO family_relationships (person_id, related_person_id) VALUES (?, ?) ON CONFLICT DO NOTHING",
+                  [personId, relatedId]
+                );
+                await run(
+                  "INSERT INTO family_relationships (person_id, related_person_id) VALUES (?, ?) ON CONFLICT DO NOTHING",
+                  [relatedId, personId]
+                );
               }
             }
           }
@@ -153,26 +149,28 @@ export async function POST(request) {
           }
 
           // Check for duplicate
-          const existing = await sql`
-            SELECT id FROM companies WHERE LOWER(name) = LOWER(${name})
-          `;
+          const existing = await all(
+            "SELECT id FROM companies WHERE LOWER(name) = LOWER(?)",
+            [name]
+          );
 
-          if (existing.rows.length > 0) {
+          if (existing.length > 0) {
             skipped++;
             continue;
           }
 
-          await sql`
-            INSERT INTO companies (name, address, city, state, zip, website)
-            VALUES (
-              ${name},
-              ${row[mapping.address] || null},
-              ${row[mapping.city] || null},
-              ${row[mapping.state] || null},
-              ${row[mapping.zip] || null},
-              ${row[mapping.website] || null}
-            )
-          `;
+          await run(
+            `INSERT INTO companies (name, address, city, state, zip, website)
+            VALUES (?, ?, ?, ?, ?, ?)`,
+            [
+              name,
+              row[mapping.address] || null,
+              row[mapping.city] || null,
+              row[mapping.state] || null,
+              row[mapping.zip] || null,
+              row[mapping.website] || null,
+            ]
+          );
           imported++;
         } else if (entityType === "schools") {
           const name = row[mapping.name] || "";
@@ -183,25 +181,27 @@ export async function POST(request) {
           }
 
           // Check for duplicate
-          const existing = await sql`
-            SELECT id FROM schools WHERE LOWER(name) = LOWER(${name})
-          `;
+          const existing = await all(
+            "SELECT id FROM schools WHERE LOWER(name) = LOWER(?)",
+            [name]
+          );
 
-          if (existing.rows.length > 0) {
+          if (existing.length > 0) {
             skipped++;
             continue;
           }
 
-          await sql`
-            INSERT INTO schools (name, address, city, state, zip)
-            VALUES (
-              ${name},
-              ${row[mapping.address] || null},
-              ${row[mapping.city] || null},
-              ${row[mapping.state] || null},
-              ${row[mapping.zip] || null}
-            )
-          `;
+          await run(
+            `INSERT INTO schools (name, address, city, state, zip)
+            VALUES (?, ?, ?, ?, ?)`,
+            [
+              name,
+              row[mapping.address] || null,
+              row[mapping.city] || null,
+              row[mapping.state] || null,
+              row[mapping.zip] || null,
+            ]
+          );
           imported++;
         } else if (entityType === "groups") {
           const name = row[mapping.name] || "";
@@ -219,23 +219,23 @@ export async function POST(request) {
           }
 
           // Look up school by name
-          const school = await sql`
-            SELECT id FROM schools WHERE LOWER(name) = LOWER(${schoolName}) LIMIT 1
-          `;
-          if (school.rows.length === 0) {
+          const school = await get(
+            "SELECT id FROM schools WHERE LOWER(name) = LOWER(?) LIMIT 1",
+            [schoolName]
+          );
+          if (!school) {
             skipped++;
             continue;
           }
-          const schoolId = school.rows[0].id;
+          const schoolId = school.id;
 
           // Check for duplicate group at same school
-          const existing = await sql`
-            SELECT id FROM groups
-            WHERE LOWER(name) = LOWER(${name})
-            AND school_id = ${schoolId}
-          `;
+          const existing = await all(
+            "SELECT id FROM groups WHERE LOWER(name) = LOWER(?) AND school_id = ?",
+            [name, schoolId]
+          );
 
-          if (existing.rows.length > 0) {
+          if (existing.length > 0) {
             skipped++;
             continue;
           }
@@ -248,14 +248,12 @@ export async function POST(request) {
             if (parts.length >= 2) {
               const lFirst = parts[0];
               const lLast = parts.slice(1).join(" ");
-              const leader = await sql`
-                SELECT id FROM people
-                WHERE LOWER(first_name) = LOWER(${lFirst})
-                AND LOWER(last_name) = LOWER(${lLast})
-                LIMIT 1
-              `;
-              if (leader.rows.length > 0) {
-                primaryLeaderId = leader.rows[0].id;
+              const leader = await get(
+                "SELECT id FROM people WHERE LOWER(first_name) = LOWER(?) AND LOWER(last_name) = LOWER(?) LIMIT 1",
+                [lFirst, lLast]
+              );
+              if (leader) {
+                primaryLeaderId = leader.id;
               }
             }
           }
@@ -263,17 +261,11 @@ export async function POST(request) {
           const year = mapping.year ? (row[mapping.year] ? parseInt(row[mapping.year], 10) : null) : null;
           const status = mapping.status ? (row[mapping.status] || "Active") : "Active";
 
-          await sql`
-            INSERT INTO groups (school_id, name, gender, year, status, primary_leader_id)
-            VALUES (
-              ${schoolId},
-              ${name},
-              ${gender},
-              ${year},
-              ${status},
-              ${primaryLeaderId}
-            )
-          `;
+          await run(
+            `INSERT INTO groups (school_id, name, gender, year, status, primary_leader_id)
+            VALUES (?, ?, ?, ?, ?, ?)`,
+            [schoolId, name, gender, year, status, primaryLeaderId]
+          );
           imported++;
         }
       } catch (error) {

@@ -1,15 +1,19 @@
 {
   "name": "fight-club-crm",
-  "version": "0.6.0",
+  "version": "0.6.1",
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "next build",
+    "build": "node scripts/migrate.js && next build",
     "start": "next start",
     "lint": "next lint",
-    "init-db": "node lib/init-db.js",
+    "migrate": "node scripts/migrate.js",
+    "migrate:status": "node scripts/migrate.js --status",
+    "migrate:dry-run": "node scripts/migrate.js --dry-run",
+    "backup": "node scripts/backup.js",
+    "restore": "node scripts/restore.js",
     "seed": "node lib/seed.js",
-    "import-data": "node lib/import-csv.js"
+    "reset-db": "node scripts/reset-db.js"
   },
   "dependencies": {
     "@radix-ui/react-accordion": "^1.2.0",
@@ -24,7 +28,6 @@
     "@radix-ui/react-select": "^2.1.1",
     "@radix-ui/react-separator": "^1.1.0",
     "@radix-ui/react-slot": "^1.1.0",
-    "@radix-ui/react-tabs": "^1.1.0",
     "@radix-ui/react-toast": "^1.2.1",
     "@tanstack/react-table": "^8.21.3",
     "@vercel/blob": "^2.3.3",

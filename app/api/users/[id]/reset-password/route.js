@@ -1,7 +1,9 @@
 import { NextResponse } from "next/server";
-import { sql } from "@/lib/db";
+import { get } from "@/lib/db";
 import { auth } from "@/lib/auth";
 import bcrypt from "bcryptjs";
+
+export const dynamic = 'force-dynamic'
 
 export async function POST(request, { params }) {
   try {
@@ -23,14 +25,12 @@ export async function POST(request, { params }) {
 
     const passwordHash = await bcrypt.hash(password, 12);
 
-    const result = await sql`
-      UPDATE users
-      SET password_hash = ${passwordHash}, updated_at = CURRENT_TIMESTAMP
-      WHERE id = ${id}
-      RETURNING id, email, name
-    `;
+    const user = await get(
+      "UPDATE users SET password_hash = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ? RETURNING id, email, name",
+      [passwordHash, id]
+    );
 
-    if (result.rows.length === 0) {
+    if (!user) {
       return NextResponse.json({ error: "User not found" }, { status: 404 });
     }
 

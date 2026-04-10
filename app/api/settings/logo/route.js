@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { sql } from "@/lib/db";
+import { all, run } from "@/lib/db";
 import { auth } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
@@ -7,23 +7,12 @@ export const dynamic = "force-dynamic";
 // GET - Fetch current logo URL and app name (public endpoint for login page)
 export async function GET() {
   try {
-    // Ensure the app_settings table exists
-    await sql`
-      CREATE TABLE IF NOT EXISTS app_settings (
-        id SERIAL PRIMARY KEY,
-        key TEXT NOT NULL UNIQUE,
-        value TEXT,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-      )
-    `;
-
-    const result = await sql`
-      SELECT key, value FROM app_settings WHERE key IN ('logo_url', 'app_name')
-    `;
+    const rows = await all(
+      "SELECT key, value FROM app_settings WHERE key IN ('logo_url', 'app_name')"
+    );
 
     const settings = {};
-    result.rows.forEach((row) => {
+    rows.forEach((row) => {
       settings[row.key] = row.value;
     });
 
@@ -86,23 +75,10 @@ export async function POST(request) {
     const base64 = buffer.toString("base64");
     const dataUrl = `data:${file.type};base64,${base64}`;
 
-    // Ensure table exists and save logo as base64 data URL
-    await sql`
-      CREATE TABLE IF NOT EXISTS app_settings (
-        id SERIAL PRIMARY KEY,
-        key TEXT NOT NULL UNIQUE,
-        value TEXT,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-      )
-    `;
-
-    await sql`
-      INSERT INTO app_settings (key, value, updated_at)
-      VALUES ('logo_url', ${dataUrl}, CURRENT_TIMESTAMP)
-      ON CONFLICT (key)
-      DO UPDATE SET value = ${dataUrl}, updated_at = CURRENT_TIMESTAMP
-    `;
+    await run(
+      "INSERT INTO app_settings (key, value, updated_at) VALUES ('logo_url', ?, CURRENT_TIMESTAMP) ON CONFLICT (key) DO UPDATE SET value = ?, updated_at = CURRENT_TIMESTAMP",
+      [dataUrl, dataUrl]
+    );
 
     return NextResponse.json({ success: true, logo_url: dataUrl });
   } catch (error) {
@@ -124,15 +100,14 @@ export async function PUT(request) {
     }
 
     const { app_name } = await request.json();
+    const nameValue = app_name || 'Fight Club CRM';
 
-    await sql`
-      INSERT INTO app_settings (key, value, updated_at)
-      VALUES ('app_name', ${app_name || 'Fight Club CRM'}, CURRENT_TIMESTAMP)
-      ON CONFLICT (key)
-      DO UPDATE SET value = ${app_name || 'Fight Club CRM'}, updated_at = CURRENT_TIMESTAMP
-    `;
+    await run(
+      "INSERT INTO app_settings (key, value, updated_at) VALUES ('app_name', ?, CURRENT_TIMESTAMP) ON CONFLICT (key) DO UPDATE SET value = ?, updated_at = CURRENT_TIMESTAMP",
+      [nameValue, nameValue]
+    );
 
-    return NextResponse.json({ success: true, app_name: app_name || 'Fight Club CRM' });
+    return NextResponse.json({ success: true, app_name: nameValue });
   } catch (error) {
     console.error("Error updating app name:", error);
     return NextResponse.json(
@@ -151,9 +126,7 @@ export async function DELETE() {
       return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
     }
 
-    await sql`
-      DELETE FROM app_settings WHERE key = 'logo_url'
-    `;
+    await run("DELETE FROM app_settings WHERE key = 'logo_url'");
 
     return NextResponse.json({ success: true });
   } catch (error) {

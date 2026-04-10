@@ -1,8 +1,14 @@
 import { NextResponse } from "next/server";
 import { all, run, get } from "@/lib/db";
+import { requireAuth } from "@/lib/api-auth";
+
+export const dynamic = 'force-dynamic'
 
 export async function GET(request) {
   try {
+    const { session, error } = await requireAuth()
+    if (error) return error
+
     const { searchParams } = new URL(request.url);
     const search = searchParams.get("search") || "";
     const startDate = searchParams.get("start_date");
@@ -98,6 +104,9 @@ export async function GET(request) {
 
 export async function POST(request) {
   try {
+    const { session, error } = await requireAuth()
+    if (error) return error
+
     const body = await request.json();
     const { amount, date, note, person_id, company_id } = body;
 

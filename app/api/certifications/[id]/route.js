@@ -1,8 +1,14 @@
 import { NextResponse } from 'next/server'
 import { get, run } from '@/lib/db'
+import { requireAuth } from '@/lib/api-auth'
+
+export const dynamic = 'force-dynamic'
 
 export async function GET(request, { params }) {
   try {
+    const { session, error } = await requireAuth()
+    if (error) return error
+
     const { id } = await params
 
     // Check if id is a certification ID or person ID
@@ -26,6 +32,9 @@ export async function GET(request, { params }) {
 
 export async function PUT(request, { params }) {
   try {
+    const { session, error } = await requireAuth()
+    if (error) return error
+
     const { id } = await params
     const body = await request.json()
     const { background_check_status, application_received, qpr_gatekeeper_training, qpr_training_date, qpr_training_renewal_date } = body

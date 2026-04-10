@@ -13,18 +13,23 @@ npm run dev          # Start development server
 npm run build        # Production build
 npm run start        # Start production server
 npm run lint         # Run ESLint
-npm run init-db      # Initialize database schema (lib/init-db.js)
+npm run migrate      # Apply pending database migrations
+npm run migrate:status  # Show which migrations are applied/pending
+npm run migrate:dry-run # Preview what would run
+npm run backup       # pg_dump to backups/ with rotation
+npm run restore      # Restore from a backup file (requires --confirm)
 npm run seed         # Seed sample data (lib/seed.js)
+npm run reset-db     # Drop all tables (requires --confirm)
 ```
 
-Database can also be initialized via API: `GET /api/setup?reset=true` (requires SETUP_SECRET if configured).
+Schema is managed via numbered SQL files in `migrations/`. See `BACKUP.md` for full procedures.
 
 ## Architecture
 
 ### Tech Stack
 
 - **Framework**: Next.js 14.2.5 with App Router
-- **Database**: PostgreSQL via @vercel/postgres (Neon-compatible)
+- **Database**: PostgreSQL via pg (Neon-hosted)
 - **Styling**: Tailwind CSS with Radix UI components
 - **Language**: JavaScript (no TypeScript)
 
@@ -36,11 +41,14 @@ Database can also be initialized via API: `GET /api/setup?reset=true` (requires 
 - `components/[entity]/` - Entity-specific components (forms, tables, dialogs)
 - `lib/db.js` - Database wrapper that converts `?` placeholders to PostgreSQL `$1, $2` syntax
 - `lib/utils.js` - Formatting utilities (currency, dates, class merging)
+- `migrations/` - Numbered SQL migration files (single source of truth for schema)
+- `scripts/` - CLI tools: migrate.js, backup.js, restore.js, reset-db.js
 
 ### Database Schema
 
-Core tables: `people`, `companies`, `donations`, `certifications`, `notes`, `schools`, `person_types`
-Junction tables: `person_type_assignments`, `person_companies`, `person_schools`
+Core tables: `people`, `companies`, `donations`, `certifications`, `notes`, `schools`, `person_types`, `roles`, `engagement_stages`, `groups`, `app_settings`, `users`
+Junction tables: `person_type_assignments`, `person_companies`, `person_schools`, `person_roles`, `group_leaders`, `family_relationships`
+Schema tracked in: `schema_migrations` table + `migrations/*.sql` files
 
 ### Rendering Patterns
 

@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { sql } from "@/lib/db";
+import { get, run } from "@/lib/db";
 import { auth } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
@@ -14,18 +14,16 @@ export async function GET(request, { params }) {
     const { id } = await params;
     const userId = parseInt(session.user.id);
 
-    const result = await sql`
-      SELECT id, user_id, name, entity_type, filter_state, is_shared, created_at
-      FROM saved_views
-      WHERE id = ${id}
-      AND (user_id = ${userId} OR is_shared = true)
-    `;
+    const view = await get(
+      "SELECT id, user_id, name, entity_type, filter_state, is_shared, created_at FROM saved_views WHERE id = ? AND (user_id = ? OR is_shared = true)",
+      [id, userId]
+    );
 
-    if (result.rows.length === 0) {
+    if (!view) {
       return NextResponse.json({ error: "View not found" }, { status: 404 });
     }
 
-    return NextResponse.json(result.rows[0]);
+    return NextResponse.json(view);
   } catch (error) {
     console.error("Error fetching saved view:", error);
     return NextResponse.json(
@@ -47,26 +45,25 @@ export async function PUT(request, { params }) {
     const { name, filter_state, is_shared } = await request.json();
 
     // Check ownership
-    const existing = await sql`
-      SELECT user_id FROM saved_views WHERE id = ${id}
-    `;
+    const existing = await get(
+      "SELECT user_id FROM saved_views WHERE id = ?",
+      [id]
+    );
 
-    if (existing.rows.length === 0) {
+    if (!existing) {
       return NextResponse.json({ error: "View not found" }, { status: 404 });
     }
 
-    if (existing.rows[0].user_id !== userId && !session.user.isAdmin) {
+    if (existing.user_id !== userId && !session.user.isAdmin) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
     }
 
-    const result = await sql`
-      UPDATE saved_views
-      SET name = ${name}, filter_state = ${JSON.stringify(filter_state)}, is_shared = ${is_shared}, updated_at = CURRENT_TIMESTAMP
-      WHERE id = ${id}
-      RETURNING id, user_id, name, entity_type, filter_state, is_shared, created_at, updated_at
-    `;
+    const view = await get(
+      "UPDATE saved_views SET name = ?, filter_state = ?, is_shared = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ? RETURNING id, user_id, name, entity_type, filter_state, is_shared, created_at, updated_at",
+      [name, JSON.stringify(filter_state), is_shared, id]
+    );
 
-    return NextResponse.json(result.rows[0]);
+    return NextResponse.json(view);
   } catch (error) {
     console.error("Error updating saved view:", error);
     return NextResponse.json(
@@ -87,19 +84,20 @@ export async function DELETE(request, { params }) {
     const userId = parseInt(session.user.id);
 
     // Check ownership
-    const existing = await sql`
-      SELECT user_id FROM saved_views WHERE id = ${id}
-    `;
+    const existing = await get(
+      "SELECT user_id FROM saved_views WHERE id = ?",
+      [id]
+    );
 
-    if (existing.rows.length === 0) {
+    if (!existing) {
       return NextResponse.json({ error: "View not found" }, { status: 404 });
     }
 
-    if (existing.rows[0].user_id !== userId && !session.user.isAdmin) {
+    if (existing.user_id !== userId && !session.user.isAdmin) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
     }
 
-    await sql`DELETE FROM saved_views WHERE id = ${id}`;
+    await run("DELETE FROM saved_views WHERE id = ?", [id]);
 
     return NextResponse.json({ success: true });
   } catch (error) {
