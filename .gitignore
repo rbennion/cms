@@ -41,3 +41,6 @@ database.sqlite
 # Database backups
 /backups/*
 !/backups/.gitkeep
+
+# Reference docs (not tracked)
+/docs

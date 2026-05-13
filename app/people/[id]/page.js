@@ -51,6 +51,7 @@ import {
   FileText,
 } from "lucide-react";
 import { AddCertificationDialog } from "@/components/certifications/add-certification-dialog";
+import { WaiversCard } from "@/components/waivers/waivers-card";
 
 export default function PersonDetailPage() {
   const params = useParams();
@@ -1399,6 +1400,11 @@ export default function PersonDetailPage() {
                 )}
               </CardContent>
             </Card>
+
+            <WaiversCard
+              personId={person.id}
+              defaultEmail={person.guardian_email || person.email || ""}
+            />
 
             {/* Certification Upload Dialog */}
             <Dialog

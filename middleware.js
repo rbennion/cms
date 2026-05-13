@@ -9,6 +9,8 @@ const publicRoutes = [
   "/reset-password",
   "/api/auth",
   "/api/settings/logo",
+  "/sign",
+  "/api/sign",
 ];
 
 // Routes that require admin access
