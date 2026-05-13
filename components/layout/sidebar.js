@@ -32,8 +32,12 @@ export function Sidebar() {
       .catch(() => {});
   }, []);
 
-  // Don't render sidebar on login/register pages
-  if (pathname === "/login" || pathname === "/register") {
+  // Don't render sidebar on login/register/public signing pages
+  if (
+    pathname === "/login" ||
+    pathname === "/register" ||
+    pathname?.startsWith("/sign/")
+  ) {
     return null;
   }
 
@@ -54,7 +58,7 @@ export function Sidebar() {
               </div>
             )}
             <span className="text-lg font-semibold">{appName}</span>
-            <span className="text-xs text-muted-foreground">v0.6.1</span>
+            <span className="text-xs text-muted-foreground">v0.7.0</span>
           </Link>
           <div className="flex justify-center mt-1">
             <Link

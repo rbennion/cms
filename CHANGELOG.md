@@ -4,6 +4,27 @@ All notable changes to the Fight Club CRM application will be documented in this
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.7.0] - 2026-05-13
+
+### Added
+- Parental waiver e-signing feature
+  - New `waivers` table tracking liability + photo/name release decisions per participant
+  - Admin "Request Waiver" flow on person detail page emails parent a unique signing link
+  - Public `/sign/[token]` page with waiver text, radio choices, name input, and signature pad — no login required
+  - Audit trail captured per signing: IP address, user agent, timestamp, SHA256 of signed PDF
+  - Signed PDF generated via `pdf-lib` with appended Signature & Audit page
+  - Admin "Generate PDF" button on signed waivers without a PDF (out-of-band generation)
+  - `guardian_email` column added to `people` for parent contact (separate from participant's own email)
+- Email via SMTP / nodemailer (env vars: `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, `EMAIL_FROM`, `EMAIL_FROM_NAME`, `NEXT_PUBLIC_APP_URL`); falls back to console log when credentials absent (dev)
+- Signed PDFs stored via `@vercel/blob` for serverless persistence (matches existing certifications upload pattern)
+
+### Changed
+- Middleware now allows `/sign` and `/api/sign` as public routes
+- Sidebar + MainContent hide on `/sign/[token]` for clean parent-facing UI
+
+### Migration
+- `003-waivers.sql` adds `waivers` table + `people.guardian_email` column
+
 ## [0.6.1] - 2026-04-10
 
 ### Security

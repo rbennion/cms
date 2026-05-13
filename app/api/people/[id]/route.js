@@ -139,6 +139,7 @@ export async function PUT(request, { params }) {
       middle_name,
       last_name,
       email,
+      guardian_email,
       phone,
       title,
       address,
@@ -163,6 +164,7 @@ export async function PUT(request, { params }) {
       last_name !== undefined ||
       middle_name !== undefined ||
       email !== undefined ||
+      guardian_email !== undefined ||
       phone !== undefined ||
       title !== undefined ||
       address !== undefined ||
@@ -187,7 +189,7 @@ export async function PUT(request, { params }) {
 
       await run(
         `UPDATE people SET
-          first_name = ?, middle_name = ?, last_name = ?, email = ?, phone = ?,
+          first_name = ?, middle_name = ?, last_name = ?, email = ?, guardian_email = ?, phone = ?,
           title = ?, address = ?, city = ?, state = ?, zip = ?,
           stage_id = ?,
           updated_at = CURRENT_TIMESTAMP
@@ -199,6 +201,7 @@ export async function PUT(request, { params }) {
             : existing.middle_name,
           updatedLastName,
           email !== undefined ? email || null : existing.email,
+          guardian_email !== undefined ? guardian_email || null : existing.guardian_email,
           phone !== undefined ? phone || null : existing.phone,
           title !== undefined ? title || null : existing.title,
           address !== undefined ? address || null : existing.address,

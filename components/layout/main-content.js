@@ -2,7 +2,7 @@
 
 import { usePathname } from "next/navigation";
 
-const authRoutes = ["/login", "/register", "/forgot-password", "/reset-password"];
+const authRoutes = ["/login", "/register", "/forgot-password", "/reset-password", "/sign/"];
 
 export function MainContent({ children }) {
   const pathname = usePathname();
