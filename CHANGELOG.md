@@ -4,6 +4,11 @@ All notable changes to the Fight Club CRM application will be documented in this
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.7.2] - 2026-05-15
+
+### Fixed
+- Waiver email sometimes failed with M365 `430 4.2.0 STOREDRV AuthenticationContext has no rights on this session` — a transient Exchange permission-propagation hiccup. SMTP send now retries up to 4 times with 1s/2s/4s backoff and mints a fresh OAuth token each attempt.
+
 ## [0.7.1] - 2026-05-15
 
 ### Fixed
