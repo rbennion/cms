@@ -257,7 +257,7 @@ export default function SignWaiverPage({ params }) {
               <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Submitting…
             </>
           ) : (
-            "Sign &amp; Submit"
+            "Sign & Submit"
           )}
         </Button>
       </form>
