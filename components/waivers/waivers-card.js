@@ -162,7 +162,7 @@ export function WaiversCard({ personId, defaultEmail }) {
                         variant="outline"
                         asChild
                       >
-                        <a href={w.signed_pdf_path} target="_blank" rel="noreferrer">
+                        <a href={`/api/waivers/${w.id}/pdf`} target="_blank" rel="noreferrer">
                           <ExternalLink className="mr-1 h-3 w-3" /> PDF
                         </a>
                       </Button>

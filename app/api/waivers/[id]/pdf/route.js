@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { get, run } from "@/lib/db";
 import { renderSignedWaiver } from "@/lib/waiver-pdf";
+import { head, get as blobGet } from "@vercel/blob";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
@@ -46,4 +47,33 @@ export async function POST(request, { params }) {
   );
 
   return NextResponse.json({ ok: true, signed_pdf_path: pdfPath, signed_pdf_sha256: sha256 });
+}
+
+// GET streams the signed PDF from Vercel Blob (private store) to an authenticated admin.
+export async function GET(request, { params }) {
+  const { requireAuth } = await import("@/lib/api-auth");
+  const { error } = await requireAuth();
+  if (error) return error;
+
+  const { id } = await params;
+  const waiver = await get(
+    `SELECT signed_pdf_path, participant_name FROM waivers WHERE id = ?`,
+    [id]
+  );
+  if (!waiver) return NextResponse.json({ error: "Not found" }, { status: 404 });
+  if (!waiver.signed_pdf_path) {
+    return NextResponse.json({ error: "PDF not generated yet" }, { status: 404 });
+  }
+
+  const { stream, headers } = await blobGet(waiver.signed_pdf_path, { access: "private" });
+
+  const safeName = (waiver.participant_name || `waiver-${id}`).replace(/[^a-z0-9-_]+/gi, "_");
+  return new Response(stream, {
+    headers: {
+      "Content-Type": "application/pdf",
+      "Content-Disposition": `inline; filename="${safeName}-waiver.pdf"`,
+      "Cache-Control": "private, max-age=0, no-cache",
+      ...(headers?.["content-length"] ? { "Content-Length": headers["content-length"] } : {}),
+    },
+  });
 }
