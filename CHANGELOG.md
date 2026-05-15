@@ -4,6 +4,22 @@ All notable changes to the Fight Club CRM application will be documented in this
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.7.1] - 2026-05-15
+
+### Fixed
+- Public sign page button rendered literal "Sign &amp; Submit" — JSX entity inside a JS string literal isn't decoded. Now plain "Sign & Submit".
+- Signed waiver PDF storage now uses Vercel Blob's `access: 'private'` (was `'public'`, which is rejected by private stores). Signed minor waivers were never meant to be world-readable.
+
+### Changed
+- Email transport switched from SMTP basic auth to **M365 OAuth2 client-credentials**. Removes dependency on App Passwords (M365 Security Defaults blocks them) and basic auth (deprecated by Microsoft).
+  - New env vars: `MS_TENANT_ID`, `MS_CLIENT_ID`, `MS_CLIENT_SECRET`.
+  - Retired: `SMTP_PASS`.
+- `GET /api/waivers/[id]/pdf` added — admin-only route that streams the signed PDF from the private blob store. UI now links to this route instead of the raw blob URL.
+
+### Operations
+- Azure AD app `Fight Club CRM — Waiver SMTP` registered, granted `SMTP.SendAsApp`. Service principal granted `FullAccess` on `waiver@fightclubus.onmicrosoft.com` via Exchange Online PowerShell.
+- All M365 OAuth creds stored in 1Password "Clients" vault.
+
 ## [0.7.0] - 2026-05-13
 
 ### Added
