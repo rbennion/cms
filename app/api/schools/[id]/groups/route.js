@@ -19,13 +19,19 @@ export async function GET(request, { params }) {
 
     const groups = await all(`
       SELECT g.*,
-        (SELECT COUNT(*) FROM group_leaders gl WHERE gl.group_id = g.id) as leader_count
+        pl.first_name as primary_leader_first_name,
+        pl.last_name as primary_leader_last_name,
+        (
+          (SELECT COUNT(*) FROM group_leaders gl WHERE gl.group_id = g.id)
+          + (CASE WHEN g.primary_leader_id IS NOT NULL THEN 1 ELSE 0 END)
+        ) as leader_count
       FROM groups g
+      LEFT JOIN people pl ON pl.id = g.primary_leader_id
       WHERE g.school_id = ?
       ORDER BY g.gender, g.name
     `, [id])
 
-    // Get leaders for each group
+    // Get support leaders for each group
     for (const group of groups) {
       const leaders = await all(`
         SELECT p.id, p.first_name, p.last_name, p.email

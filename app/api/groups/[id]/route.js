@@ -34,6 +34,24 @@ export async function GET(request, { params }) {
       ORDER BY p.first_name, p.last_name
     `, [id])
 
+    // Get students
+    const students = await all(`
+      SELECT p.id, p.first_name, p.last_name, p.email, p.phone
+      FROM people p
+      JOIN group_students gs ON p.id = gs.person_id
+      WHERE gs.group_id = ?
+      ORDER BY p.first_name, p.last_name
+    `, [id])
+
+    // Get parents
+    const parents = await all(`
+      SELECT p.id, p.first_name, p.last_name, p.email, p.phone
+      FROM people p
+      JOIN group_parents gp ON p.id = gp.person_id
+      WHERE gp.group_id = ?
+      ORDER BY p.first_name, p.last_name
+    `, [id])
+
     // Get meeting locations
     const meetingLocations = await all(`
       SELECT * FROM group_meeting_locations
@@ -41,7 +59,7 @@ export async function GET(request, { params }) {
       ORDER BY is_primary DESC, name
     `, [id])
 
-    return NextResponse.json({ ...group, leaders, meeting_locations: meetingLocations })
+    return NextResponse.json({ ...group, leaders, students, parents, meeting_locations: meetingLocations })
   } catch (error) {
     console.error('Error fetching group:', error)
     return NextResponse.json({ error: 'Failed to fetch group' }, { status: 500 })

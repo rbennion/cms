@@ -24,6 +24,7 @@ export function AddCertificationDialog({ open, onOpenChange, personId, personNam
   const [formData, setFormData] = useState({
     status: 'Pending',
     background_check: false,
+    background_check_passed: false,
     application_received: false,
     qpr_gatekeeper_training: false,
     qpr_training_date: '',
@@ -49,6 +50,7 @@ export function AddCertificationDialog({ open, onOpenChange, personId, personNam
         setFormData({
           status: 'Pending',
           background_check: false,
+          background_check_passed: false,
           application_received: false,
           qpr_gatekeeper_training: false,
           qpr_training_date: '',
@@ -91,12 +93,12 @@ export function AddCertificationDialog({ open, onOpenChange, personId, personNam
 
             <div className="flex items-center space-x-2">
               <Checkbox
-                id="background_check"
-                checked={formData.background_check}
-                onCheckedChange={(checked) => setFormData(prev => ({ ...prev, background_check: checked }))}
+                id="background_check_passed"
+                checked={formData.background_check_passed}
+                onCheckedChange={(checked) => setFormData(prev => ({ ...prev, background_check_passed: checked }))}
               />
-              <Label htmlFor="background_check" className="cursor-pointer">
-                Background Check Complete
+              <Label htmlFor="background_check_passed" className="cursor-pointer">
+                Background Check Passed
               </Label>
             </div>
 

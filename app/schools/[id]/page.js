@@ -416,12 +416,12 @@ export default function SchoolDetailPage() {
           </Card>
 
           <div className="lg:col-span-2 space-y-6">
-            {/* People Card */}
+            {/* Staff Card */}
             <Card>
               <CardHeader className="flex flex-row items-center justify-between">
                 <CardTitle className="flex items-center gap-2">
                   <Users className="h-5 w-5" />
-                  People
+                  Staff
                 </CardTitle>
                 {!showPersonAdd && (
                   <Button size="sm" onClick={() => setShowPersonAdd(true)}>
@@ -579,9 +579,24 @@ export default function SchoolDetailPage() {
                         </TableRow>
                       </TableHeader>
                       <TableBody>
-                        {filteredGroups.map((group) => (
-                          <TableRow key={group.id}>
-                            <TableCell className="font-medium">{group.name}</TableCell>
+                        {filteredGroups.map((group) => {
+                          const hasPrimary = !!group.primary_leader_id;
+                          const supportLeaders = group.leaders || [];
+                          return (
+                          <TableRow
+                            key={group.id}
+                            className="cursor-pointer hover:bg-muted/50"
+                            onClick={() => router.push(`/groups/${group.id}`)}
+                          >
+                            <TableCell className="font-medium">
+                              <Link
+                                href={`/groups/${group.id}`}
+                                className="hover:underline"
+                                onClick={(e) => e.stopPropagation()}
+                              >
+                                {group.name}
+                              </Link>
+                            </TableCell>
                             <TableCell>
                               <Badge variant={group.gender === "Girls" ? "default" : "secondary"}>
                                 {group.gender}
@@ -589,28 +604,45 @@ export default function SchoolDetailPage() {
                             </TableCell>
                             <TableCell>{group.year || "-"}</TableCell>
                             <TableCell>
-                              {group.leaders && group.leaders.length > 0 ? (
-                                <div className="flex flex-wrap gap-1">
-                                  {group.leaders.map((leader, i) => (
-                                    <span key={leader.id}>
+                              {hasPrimary || supportLeaders.length > 0 ? (
+                                <div className="flex flex-col gap-1">
+                                  {hasPrimary && (
+                                    <div className="flex items-center gap-1">
                                       <Link
-                                        href={`/people/${leader.id}`}
+                                        href={`/people/${group.primary_leader_id}`}
                                         className="text-sm text-primary hover:underline"
+                                        onClick={(e) => e.stopPropagation()}
                                       >
-                                        {leader.first_name} {leader.last_name}
+                                        {group.primary_leader_first_name} {group.primary_leader_last_name}
                                       </Link>
-                                      {i < group.leaders.length - 1 && (
-                                        <span className="text-muted-foreground">, </span>
-                                      )}
-                                    </span>
-                                  ))}
+                                      <Badge variant="outline" className="text-xs">Primary</Badge>
+                                    </div>
+                                  )}
+                                  {supportLeaders.length > 0 && (
+                                    <div className="flex flex-wrap gap-1">
+                                      {supportLeaders.map((leader, i) => (
+                                        <span key={leader.id}>
+                                          <Link
+                                            href={`/people/${leader.id}`}
+                                            className="text-sm text-primary hover:underline"
+                                            onClick={(e) => e.stopPropagation()}
+                                          >
+                                            {leader.first_name} {leader.last_name}
+                                          </Link>
+                                          {i < supportLeaders.length - 1 && (
+                                            <span className="text-muted-foreground">, </span>
+                                          )}
+                                        </span>
+                                      ))}
+                                    </div>
+                                  )}
                                 </div>
                               ) : (
                                 <span className="text-muted-foreground">-</span>
                               )}
                             </TableCell>
                             <TableCell>{group.meeting_location || "-"}</TableCell>
-                            <TableCell>
+                            <TableCell onClick={(e) => e.stopPropagation()}>
                               <div className="flex items-center gap-2">
                                 <Button
                                   variant="ghost"
@@ -632,7 +664,8 @@ export default function SchoolDetailPage() {
                               </div>
                             </TableCell>
                           </TableRow>
-                        ))}
+                          );
+                        })}
                       </TableBody>
                     </Table>
                   );

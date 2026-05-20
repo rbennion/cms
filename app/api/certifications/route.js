@@ -55,7 +55,7 @@ export async function POST(request) {
     if (error) return error
 
     const body = await request.json()
-    const { person_id, background_check_status, application_received, qpr_gatekeeper_training, qpr_training_date, qpr_training_renewal_date } = body
+    const { person_id, background_check_status, background_check_passed, application_received, qpr_gatekeeper_training, qpr_training_date, qpr_training_renewal_date } = body
 
     if (!person_id) {
       return NextResponse.json({ error: 'Person ID is required' }, { status: 400 })
@@ -68,9 +68,9 @@ export async function POST(request) {
     }
 
     const result = await run(
-      `INSERT INTO certifications (person_id, background_check_status, application_received, qpr_gatekeeper_training, qpr_training_date, qpr_training_renewal_date)
-       VALUES (?, ?, ?, ?, ?, ?)`,
-      [person_id, background_check_status || 'pending', application_received ? 1 : 0, qpr_gatekeeper_training ? 1 : 0, qpr_training_date || null, qpr_training_renewal_date || null]
+      `INSERT INTO certifications (person_id, background_check_status, background_check_passed, application_received, qpr_gatekeeper_training, qpr_training_date, qpr_training_renewal_date)
+       VALUES (?, ?, ?, ?, ?, ?, ?)`,
+      [person_id, background_check_status || 'pending', background_check_passed ? true : false, application_received ? 1 : 0, qpr_gatekeeper_training ? 1 : 0, qpr_training_date || null, qpr_training_renewal_date || null]
     )
 
     const certification = await get('SELECT * FROM certifications WHERE id = ?', [result.lastInsertRowid])

@@ -70,7 +70,10 @@ export async function GET(request) {
       SELECT g.*, s.name as school_name,
         pl.first_name as primary_leader_first_name,
         pl.last_name as primary_leader_last_name,
-        (SELECT COUNT(*) FROM group_leaders gl WHERE gl.group_id = g.id) as leader_count
+        (
+          (SELECT COUNT(*) FROM group_leaders gl WHERE gl.group_id = g.id)
+          + (CASE WHEN g.primary_leader_id IS NOT NULL THEN 1 ELSE 0 END)
+        ) as leader_count
       ${fromClause}
       ${whereClause}
       ORDER BY s.name, g.name

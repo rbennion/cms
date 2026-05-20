@@ -345,6 +345,7 @@ function GroupsPageContent() {
           data={groups}
           loading={loading}
           emptyMessage="No groups found matching your filters"
+          onRowClick={(group) => router.push(`/groups/${group.id}`)}
         />
       </div>
 

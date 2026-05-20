@@ -70,6 +70,7 @@ export default function CertificationsPage() {
   const [selectedPerson, setSelectedPerson] = useState(null);
   const [newCertData, setNewCertData] = useState({
     background_check_status: "pending",
+    background_check_passed: false,
     application_received: false,
     qpr_gatekeeper_training: false,
     qpr_training_date: "",
@@ -163,6 +164,7 @@ export default function CertificationsPage() {
       setSelectedPerson(null);
       setNewCertData({
         background_check_status: "pending",
+        background_check_passed: false,
         application_received: false,
         qpr_gatekeeper_training: false,
         qpr_training_date: "",
@@ -253,14 +255,21 @@ export default function CertificationsPage() {
           body: formData,
         }
       );
-      if (!res.ok) throw new Error("Failed to upload file");
+      if (!res.ok) {
+        let serverMessage = `Upload failed (HTTP ${res.status})`;
+        try {
+          const body = await res.json();
+          if (body?.error) serverMessage = body.error;
+        } catch {}
+        throw new Error(serverMessage);
+      }
       toast({ title: "File uploaded successfully" });
       fetchCertifications();
       setUploadCert(null);
       setUploadType(null);
     } catch (error) {
       toast({
-        title: "Error",
+        title: "Upload failed",
         description: error.message,
         variant: "destructive",
       });
@@ -271,6 +280,7 @@ export default function CertificationsPage() {
     setEditingRowId(cert.id);
     setEditRowData({
       background_check_status: cert.background_check_status || "pending",
+      background_check_passed: !!cert.background_check_passed,
       application_received: !!cert.application_received,
       qpr_gatekeeper_training: !!cert.qpr_gatekeeper_training,
       qpr_training_date: cert.qpr_training_date || "",
@@ -485,6 +495,7 @@ export default function CertificationsPage() {
                 <TableHead>Background Check</TableHead>
                 <TableHead>Application</TableHead>
                 <TableHead>QPR Training</TableHead>
+                <TableHead>QPR Certificate</TableHead>
                 <TableHead>Actions</TableHead>
               </TableRow>
             </TableHeader>
@@ -500,7 +511,7 @@ export default function CertificationsPage() {
               ) : certifications.length === 0 ? (
                 <TableRow>
                   <TableCell
-                    colSpan={6}
+                    colSpan={7}
                     className="text-center py-8 text-muted-foreground"
                   >
                     No certifications found
@@ -533,22 +544,33 @@ export default function CertificationsPage() {
                       </TableCell>
                       <TableCell>
                         {isEditing ? (
-                          <Select
-                            value={editRowData.background_check_status}
-                            onValueChange={(value) =>
-                              setEditRowData({ ...editRowData, background_check_status: value })
-                            }
-                          >
-                            <SelectTrigger className="w-28">
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="pending">Pending</SelectItem>
-                              <SelectItem value="approved">Approved</SelectItem>
-                              <SelectItem value="denied">Denied</SelectItem>
-                              <SelectItem value="expired">Expired</SelectItem>
-                            </SelectContent>
-                          </Select>
+                          <div className="space-y-2">
+                            <Select
+                              value={editRowData.background_check_status}
+                              onValueChange={(value) =>
+                                setEditRowData({ ...editRowData, background_check_status: value })
+                              }
+                            >
+                              <SelectTrigger className="w-28">
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="pending">Pending</SelectItem>
+                                <SelectItem value="approved">Approved</SelectItem>
+                                <SelectItem value="denied">Denied</SelectItem>
+                                <SelectItem value="expired">Expired</SelectItem>
+                              </SelectContent>
+                            </Select>
+                            <div className="flex items-center space-x-2">
+                              <Checkbox
+                                checked={editRowData.background_check_passed}
+                                onCheckedChange={(checked) =>
+                                  setEditRowData({ ...editRowData, background_check_passed: checked })
+                                }
+                              />
+                              <span className="text-sm">Passed</span>
+                            </div>
+                          </div>
                         ) : (
                           <div className="flex items-center gap-2">
                             <Badge
@@ -558,21 +580,11 @@ export default function CertificationsPage() {
                             >
                               {config.label}
                             </Badge>
-                            <Button
-                              size="sm"
-                              variant="ghost"
-                              onClick={() => {
-                                setUploadCert(cert);
-                                setUploadType("background-check");
-                              }}
+                            <Badge
+                              variant={cert.background_check_passed ? "success" : "secondary"}
                             >
-                              <Upload className="h-3 w-3" />
-                            </Button>
-                            {cert.background_check_attachment_path && (
-                              <a href={cert.background_check_attachment_path} target="_blank" rel="noopener noreferrer">
-                                <FileText className="h-3 w-3 text-primary" />
-                              </a>
-                            )}
+                              {cert.background_check_passed ? "Passed" : "Not Passed"}
+                            </Badge>
                           </div>
                         )}
                       </TableCell>
@@ -696,6 +708,30 @@ export default function CertificationsPage() {
                         )}
                       </TableCell>
                       <TableCell>
+                        <div className="flex items-center gap-2">
+                          <Badge
+                            variant={cert.qpr_certificate_attachment_path ? "success" : "secondary"}
+                          >
+                            {cert.qpr_certificate_attachment_path ? "Uploaded" : "Not Uploaded"}
+                          </Badge>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => {
+                              setUploadCert(cert);
+                              setUploadType("qpr-certificate");
+                            }}
+                          >
+                            <Upload className="h-3 w-3" />
+                          </Button>
+                          {cert.qpr_certificate_attachment_path && (
+                            <a href={cert.qpr_certificate_attachment_path} target="_blank" rel="noopener noreferrer">
+                              <FileText className="h-3 w-3 text-primary" />
+                            </a>
+                          )}
+                        </div>
+                      </TableCell>
+                      <TableCell>
                         {isEditing ? (
                           <div className="flex items-center gap-1">
                             <Button size="sm" variant="ghost" onClick={handleSaveRow} disabled={savingRow}>
@@ -764,7 +800,12 @@ export default function CertificationsPage() {
         <DialogContent>
           <DialogHeader>
             <DialogTitle>
-              Upload {uploadType === "application" ? "Application" : uploadType === "training" ? "Training" : "Background Check"}{" "}
+              Upload {
+                uploadType === "application" ? "Application"
+                  : uploadType === "training" ? "QPR Training"
+                  : uploadType === "qpr-certificate" ? "QPR Certificate"
+                  : "Background Check"
+              }{" "}
               Document
             </DialogTitle>
           </DialogHeader>
@@ -832,6 +873,19 @@ export default function CertificationsPage() {
                   <SelectItem value="expired">Expired</SelectItem>
                 </SelectContent>
               </Select>
+            </div>
+            <div className="flex items-center space-x-2">
+              <Checkbox
+                id="add-cert-bg-passed"
+                checked={newCertData.background_check_passed}
+                onCheckedChange={(checked) =>
+                  setNewCertData({
+                    ...newCertData,
+                    background_check_passed: checked,
+                  })
+                }
+              />
+              <Label htmlFor="add-cert-bg-passed">Background Check Passed</Label>
             </div>
             <div className="flex items-center space-x-2">
               <Checkbox

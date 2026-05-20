@@ -22,6 +22,7 @@ import {
 import { MultiSelectSearch } from "@/components/ui/multi-select-search";
 import { NotesList } from "@/components/notes/notes-list";
 import { ConfirmDialog } from "@/components/shared/confirm-dialog";
+import { AddressFields } from "@/components/shared/address-fields";
 import {
   Dialog,
   DialogContent,
@@ -66,6 +67,10 @@ export default function PersonDetailPage() {
     last_name: "",
     email: "",
     phone: "",
+    address: "",
+    city: "",
+    state: "",
+    zip: "",
   });
   const [allCompanies, setAllCompanies] = useState([]);
   const [allSchools, setAllSchools] = useState([]);
@@ -91,6 +96,7 @@ export default function PersonDetailPage() {
   const [isEditingCertification, setIsEditingCertification] = useState(false);
   const [certificationData, setCertificationData] = useState({
     background_check_status: "pending",
+    background_check_passed: false,
     application_received: false,
     qpr_gatekeeper_training: false,
     qpr_training_date: "",
@@ -139,6 +145,10 @@ export default function PersonDetailPage() {
         last_name: data.last_name || "",
         email: data.email || "",
         phone: data.phone || "",
+        address: data.address || "",
+        city: data.city || "",
+        state: data.state || "",
+        zip: data.zip || "",
       });
     } catch (error) {
       toast({
@@ -193,6 +203,10 @@ export default function PersonDetailPage() {
       last_name: person.last_name || "",
       email: person.email || "",
       phone: person.phone || "",
+      address: person.address || "",
+      city: person.city || "",
+      state: person.state || "",
+      zip: person.zip || "",
     });
     setIsEditingProfile(false);
   };
@@ -399,6 +413,7 @@ export default function PersonDetailPage() {
       setCertificationData({
         background_check_status:
           person.certification.background_check_status || "pending",
+        background_check_passed: !!person.certification.background_check_passed,
         application_received: !!person.certification.application_received,
         qpr_gatekeeper_training: !!person.certification.qpr_gatekeeper_training,
         qpr_training_date: person.certification.qpr_training_date || "",
@@ -407,6 +422,7 @@ export default function PersonDetailPage() {
     } else {
       setCertificationData({
         background_check_status: "pending",
+        background_check_passed: false,
         application_received: false,
         qpr_gatekeeper_training: false,
         qpr_training_date: "",
@@ -428,13 +444,20 @@ export default function PersonDetailPage() {
         `/api/certifications/${person.certification.id}/${certUploadType}`,
         { method: "POST", body: formData }
       );
-      if (!res.ok) throw new Error("Failed to upload file");
+      if (!res.ok) {
+        let serverMessage = `Upload failed (HTTP ${res.status})`;
+        try {
+          const body = await res.json();
+          if (body?.error) serverMessage = body.error;
+        } catch {}
+        throw new Error(serverMessage);
+      }
       toast({ title: "File uploaded successfully" });
       setCertUploadType(null);
       fetchPerson();
     } catch (error) {
       toast({
-        title: "Error",
+        title: "Upload failed",
         description: error.message,
         variant: "destructive",
       });
@@ -762,6 +785,11 @@ export default function PersonDetailPage() {
                       className="h-8 text-sm"
                     />
                   </div>
+                  <AddressFields
+                    formData={profileData}
+                    onChange={setProfileData}
+                    showCard={false}
+                  />
                 </div>
               )}
             </CardContent>
@@ -1270,6 +1298,16 @@ export default function PersonDetailPage() {
                       </div>
                       <div className="flex items-center space-x-2">
                         <Checkbox
+                          id="edit-cert-bg-passed"
+                          checked={certificationData.background_check_passed}
+                          onCheckedChange={(checked) =>
+                            setCertificationData({ ...certificationData, background_check_passed: checked })
+                          }
+                        />
+                        <Label htmlFor="edit-cert-bg-passed">Background Check Passed</Label>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <Checkbox
                           id="edit-cert-app"
                           checked={certificationData.application_received}
                           onCheckedChange={(checked) =>
@@ -1329,14 +1367,11 @@ export default function PersonDetailPage() {
                           >
                             {person.certification.background_check_status || "Not Started"}
                           </Badge>
-                          <Button size="sm" variant="ghost" onClick={() => setCertUploadType("background-check")}>
-                            <Upload className="h-3 w-3" />
-                          </Button>
-                          {person.certification.background_check_attachment_path && (
-                            <a href={person.certification.background_check_attachment_path} target="_blank" rel="noopener noreferrer">
-                              <FileText className="h-4 w-4 text-primary" />
-                            </a>
-                          )}
+                          <Badge
+                            variant={person.certification.background_check_passed ? "success" : "secondary"}
+                          >
+                            {person.certification.background_check_passed ? "Passed" : "Not Passed"}
+                          </Badge>
                         </div>
                       </div>
                       <div className="flex items-center justify-between p-3 border rounded-lg">
@@ -1370,6 +1405,24 @@ export default function PersonDetailPage() {
                           </Button>
                           {person.certification.qpr_training_attachment_path && (
                             <a href={person.certification.qpr_training_attachment_path} target="_blank" rel="noopener noreferrer">
+                              <FileText className="h-4 w-4 text-primary" />
+                            </a>
+                          )}
+                        </div>
+                      </div>
+                      <div className="flex items-center justify-between p-3 border rounded-lg">
+                        <span>QPR Certificate</span>
+                        <div className="flex items-center gap-2">
+                          <Badge
+                            variant={person.certification.qpr_certificate_attachment_path ? "success" : "secondary"}
+                          >
+                            {person.certification.qpr_certificate_attachment_path ? "Uploaded" : "Not Uploaded"}
+                          </Badge>
+                          <Button size="sm" variant="ghost" onClick={() => setCertUploadType("qpr-certificate")}>
+                            <Upload className="h-3 w-3" />
+                          </Button>
+                          {person.certification.qpr_certificate_attachment_path && (
+                            <a href={person.certification.qpr_certificate_attachment_path} target="_blank" rel="noopener noreferrer">
                               <FileText className="h-4 w-4 text-primary" />
                             </a>
                           )}
@@ -1414,7 +1467,12 @@ export default function PersonDetailPage() {
               <DialogContent>
                 <DialogHeader>
                   <DialogTitle>
-                    Upload {certUploadType === "application" ? "Application" : certUploadType === "training" ? "Training" : "Background Check"} Document
+                    Upload {
+                      certUploadType === "application" ? "Application"
+                        : certUploadType === "training" ? "QPR Training"
+                        : certUploadType === "qpr-certificate" ? "QPR Certificate"
+                        : "Background Check"
+                    } Document
                   </DialogTitle>
                 </DialogHeader>
                 <div className="py-4">

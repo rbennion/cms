@@ -4,6 +4,35 @@ All notable changes to the Fight Club CRM application will be documented in this
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.8.0] - 2026-05-20
+
+### Added
+- **QPR Certificate** attachment slot on certifications — distinct from QPR Training attachment. New column `qpr_certificate_attachment_path` (migration 004). Upload + display wired on People detail and Certifications list. (FCC024)
+- **Background Check Passed** explicit boolean — replaces the previous file-upload requirement. New column `background_check_passed` (migration 004). Checkbox in cert edit forms; Passed/Not Passed badge in read-mode. (FCC022)
+- **Students** and **Parents** membership on Groups — two new junction tables `group_students`, `group_parents` (migration 005). New API routes `/api/groups/[id]/students`, `/api/groups/[id]/parents` with GET/POST/DELETE. Two new cards on the Group detail page mirroring the Support Leaders pattern. (FCC015, FCC016)
+- **Primary leader** now shown on School view's Groups table — labeled with a "Primary" badge, listed above support leaders. (FCC019)
+- **Address fields** on the People detail Contact Information edit form — reuses `<AddressFields>` component. Schema already had columns; this was a UI gap. (FCC025)
+
+### Changed
+- "Additional Leaders" renamed to **"Support Leaders"** in the group form dialog and on the Group detail card. (FCC014)
+- School view "People" card renamed to **"Staff"**. (FCC020)
+- Groups list rows are now fully clickable — added `onRowClick` prop to the shared DataTable. Same on School view's Groups table. (FCC018)
+- Background Check upload UI removed from People detail and Certifications list; status dropdown + Passed checkbox remain as the records of pass. (FCC022)
+- Certification upload error toasts now surface the server-side error message (file too big, invalid type, etc.) instead of a generic "Failed to upload file". Helps end-users self-diagnose. (FCC023)
+
+### Fixed
+- **Leader count** was undercounting groups with a primary leader. The `leader_count` computed on `/api/groups` and `/api/schools/[id]/groups` now adds 1 when `primary_leader_id IS NOT NULL`. (FCC017)
+- School view's Groups query now joins `people` on `primary_leader_id` so the primary leader's name is available to the UI. (FCC019)
+
+### Operations
+- New env var none. Migrations 004 and 005 must be applied on prod (`npm run migrate`).
+
+### Pending / Out of scope
+- **FCC021** "Meeting Location appears twice on School view" — code review shows only one column. Awaiting Brad's screenshot to confirm what he sees duplicated.
+- **FCC026** Sentry SDK wire-up — interactive wizard, will run in a follow-up.
+- **FCC027** Real-device mobile signature pad test — manual QA, will log results separately.
+- **FCC028** Mailbox alias for `waiver@fightclub-us.com` — blocked on custom-domain decision.
+
 ## [0.7.2] - 2026-05-15
 
 ### Fixed

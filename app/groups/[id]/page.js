@@ -55,8 +55,14 @@ export default function GroupDetailPage() {
   // Primary leader state
   const [showPrimaryLeaderAdd, setShowPrimaryLeaderAdd] = useState(false);
 
-  // Additional leaders state
+  // Support leaders state
   const [showLeaderAdd, setShowLeaderAdd] = useState(false);
+
+  // Students state
+  const [showStudentAdd, setShowStudentAdd] = useState(false);
+
+  // Parents state
+  const [showParentAdd, setShowParentAdd] = useState(false);
 
   // Meeting locations state
   const [showLocationAdd, setShowLocationAdd] = useState(false);
@@ -259,6 +265,72 @@ export default function GroupDetailPage() {
         description: error.message,
         variant: "destructive",
       });
+    }
+  };
+
+  // Student handlers
+  const handleAddStudent = async (person) => {
+    try {
+      const res = await fetch(`/api/groups/${params.id}/students`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ person_id: person.id }),
+      });
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        throw new Error(body.error || "Failed to add student");
+      }
+      toast({ title: "Student added" });
+      setShowStudentAdd(false);
+      fetchGroup();
+    } catch (error) {
+      toast({ title: "Error", description: error.message, variant: "destructive" });
+    }
+  };
+
+  const handleRemoveStudent = async (personId) => {
+    try {
+      const res = await fetch(`/api/groups/${params.id}/students/${personId}`, {
+        method: "DELETE",
+      });
+      if (!res.ok) throw new Error("Failed to remove student");
+      toast({ title: "Student removed" });
+      fetchGroup();
+    } catch (error) {
+      toast({ title: "Error", description: error.message, variant: "destructive" });
+    }
+  };
+
+  // Parent handlers
+  const handleAddParent = async (person) => {
+    try {
+      const res = await fetch(`/api/groups/${params.id}/parents`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ person_id: person.id }),
+      });
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        throw new Error(body.error || "Failed to add parent");
+      }
+      toast({ title: "Parent added" });
+      setShowParentAdd(false);
+      fetchGroup();
+    } catch (error) {
+      toast({ title: "Error", description: error.message, variant: "destructive" });
+    }
+  };
+
+  const handleRemoveParent = async (personId) => {
+    try {
+      const res = await fetch(`/api/groups/${params.id}/parents/${personId}`, {
+        method: "DELETE",
+      });
+      if (!res.ok) throw new Error("Failed to remove parent");
+      toast({ title: "Parent removed" });
+      fetchGroup();
+    } catch (error) {
+      toast({ title: "Error", description: error.message, variant: "destructive" });
     }
   };
 
@@ -637,12 +709,12 @@ export default function GroupDetailPage() {
               </CardContent>
             </Card>
 
-            {/* Additional Leaders Card */}
+            {/* Support Leaders Card */}
             <Card>
               <CardHeader className="flex flex-row items-center justify-between">
                 <CardTitle className="flex items-center gap-2">
                   <Users className="h-5 w-5" />
-                  Additional Leaders
+                  Support Leaders
                 </CardTitle>
                 {!showLeaderAdd && (
                   <Button size="sm" onClick={() => setShowLeaderAdd(true)}>
@@ -687,7 +759,7 @@ export default function GroupDetailPage() {
                 )}
                 {group.leaders?.length === 0 ? (
                   <p className="text-muted-foreground text-center py-4">
-                    No additional leaders assigned
+                    No support leaders assigned
                   </p>
                 ) : (
                   <div className="space-y-2">
@@ -713,6 +785,174 @@ export default function GroupDetailPage() {
                           size="sm"
                           variant="ghost"
                           onClick={() => handleRemoveLeader(leader.id)}
+                        >
+                          <X className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* Students Card */}
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between">
+                <CardTitle className="flex items-center gap-2">
+                  <Users className="h-5 w-5" />
+                  Students
+                </CardTitle>
+                {!showStudentAdd && (
+                  <Button size="sm" onClick={() => setShowStudentAdd(true)}>
+                    Add
+                  </Button>
+                )}
+              </CardHeader>
+              <CardContent>
+                {showStudentAdd && (
+                  <div className="mb-4 p-3 border rounded-lg bg-muted/50">
+                    <Label className="text-xs mb-2 block">
+                      Search and select student
+                    </Label>
+                    <div className="flex gap-2">
+                      <MultiSelectSearch
+                        options={allPeople.filter(
+                          (p) => !group.students?.some((s) => s.id === p.id)
+                        )}
+                        selected={[]}
+                        onChange={(selected) => {
+                          if (selected.length > 0) {
+                            handleAddStudent(selected[0]);
+                          }
+                        }}
+                        placeholder="Search people..."
+                        renderOption={(p) =>
+                          `${p.first_name} ${p.last_name}`
+                        }
+                        singleSelect
+                      />
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => setShowStudentAdd(false)}
+                      >
+                        <X className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </div>
+                )}
+                {!group.students || group.students.length === 0 ? (
+                  <p className="text-muted-foreground text-center py-4">
+                    No students assigned
+                  </p>
+                ) : (
+                  <div className="space-y-2">
+                    {group.students.map((student) => (
+                      <div
+                        key={student.id}
+                        className="flex items-center justify-between p-3 border rounded-lg hover:bg-muted/50 transition-colors"
+                      >
+                        <div>
+                          <Link
+                            href={`/people/${student.id}`}
+                            className="font-medium hover:underline"
+                          >
+                            {student.first_name} {student.last_name}
+                          </Link>
+                          {student.email && (
+                            <p className="text-sm text-muted-foreground">
+                              {student.email}
+                            </p>
+                          )}
+                        </div>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => handleRemoveStudent(student.id)}
+                        >
+                          <X className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* Parents Card */}
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between">
+                <CardTitle className="flex items-center gap-2">
+                  <Users className="h-5 w-5" />
+                  Parents
+                </CardTitle>
+                {!showParentAdd && (
+                  <Button size="sm" onClick={() => setShowParentAdd(true)}>
+                    Add
+                  </Button>
+                )}
+              </CardHeader>
+              <CardContent>
+                {showParentAdd && (
+                  <div className="mb-4 p-3 border rounded-lg bg-muted/50">
+                    <Label className="text-xs mb-2 block">
+                      Search and select parent
+                    </Label>
+                    <div className="flex gap-2">
+                      <MultiSelectSearch
+                        options={allPeople.filter(
+                          (p) => !group.parents?.some((par) => par.id === p.id)
+                        )}
+                        selected={[]}
+                        onChange={(selected) => {
+                          if (selected.length > 0) {
+                            handleAddParent(selected[0]);
+                          }
+                        }}
+                        placeholder="Search people..."
+                        renderOption={(p) =>
+                          `${p.first_name} ${p.last_name}`
+                        }
+                        singleSelect
+                      />
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => setShowParentAdd(false)}
+                      >
+                        <X className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </div>
+                )}
+                {!group.parents || group.parents.length === 0 ? (
+                  <p className="text-muted-foreground text-center py-4">
+                    No parents assigned
+                  </p>
+                ) : (
+                  <div className="space-y-2">
+                    {group.parents.map((parent) => (
+                      <div
+                        key={parent.id}
+                        className="flex items-center justify-between p-3 border rounded-lg hover:bg-muted/50 transition-colors"
+                      >
+                        <div>
+                          <Link
+                            href={`/people/${parent.id}`}
+                            className="font-medium hover:underline"
+                          >
+                            {parent.first_name} {parent.last_name}
+                          </Link>
+                          {parent.email && (
+                            <p className="text-sm text-muted-foreground">
+                              {parent.email}
+                            </p>
+                          )}
+                        </div>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => handleRemoveParent(parent.id)}
                         >
                           <X className="h-4 w-4" />
                         </Button>

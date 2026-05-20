@@ -48,6 +48,7 @@ const PAGE_SIZE_OPTIONS = [25, 50, 100, 250];
  * @param {boolean} props.showColumnVisibility - Show column visibility toggle (default: true)
  * @param {boolean} props.showPagination - Show pagination controls (default: true)
  * @param {string} props.emptyMessage - Message when no data (default: "No results.")
+ * @param {(row: any) => void} props.onRowClick - Optional row click handler. When provided, rows are cursor-pointer and clicks not on an interactive child fire this callback with the row's original data.
  */
 export function DataTable({
   columns,
@@ -57,6 +58,7 @@ export function DataTable({
   showColumnVisibility = true,
   showPagination = true,
   emptyMessage = "No results.",
+  onRowClick,
 }) {
   const [sorting, setSorting] = React.useState([]);
   const [columnFilters, setColumnFilters] = React.useState([]);
@@ -155,6 +157,19 @@ export function DataTable({
                 <TableRow
                   key={row.id}
                   data-state={row.getIsSelected() && "selected"}
+                  className={onRowClick ? "cursor-pointer hover:bg-muted/50" : undefined}
+                  onClick={
+                    onRowClick
+                      ? (e) => {
+                          // Don't navigate if the click came from an interactive child
+                          // (link, button, input, select, etc.)
+                          if (e.target.closest("a, button, input, select, textarea, [role='button'], [role='menuitem']")) {
+                            return;
+                          }
+                          onRowClick(row.original);
+                        }
+                      : undefined
+                  }
                 >
                   {row.getVisibleCells().map((cell) => (
                     <TableCell key={cell.id}>

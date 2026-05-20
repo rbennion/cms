@@ -215,7 +215,7 @@ export function GroupForm({ open, onOpenChange, schoolId, group, people, onSaved
             </div>
 
             <div className="space-y-2">
-              <Label>Additional Leaders</Label>
+              <Label>Support Leaders</Label>
               <MultiSelectSearch
                 options={sortedPeople.filter(p => p.id !== formData.primary_leader_id)}
                 selected={selectedLeaders}
