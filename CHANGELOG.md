@@ -29,7 +29,6 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - New env var none. Migrations 004, 005, and 006 must be applied on prod (`npm run migrate`).
 
 ### Pending / Out of scope
-- **FCC026** Sentry SDK wire-up — interactive wizard, will run in a follow-up.
 - **FCC027** Real-device mobile signature pad test — manual QA, will log results separately.
 - **FCC028** Mailbox alias for `waiver@fightclub-us.com` — blocked on custom-domain decision.
 
