@@ -176,15 +176,6 @@ export function GroupForm({ open, onOpenChange, schoolId, group, people, onSaved
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="meeting_location">Meeting Location</Label>
-              <Input
-                id="meeting_location"
-                value={formData.meeting_location}
-                onChange={(e) => setFormData(prev => ({ ...prev, meeting_location: e.target.value }))}
-              />
-            </div>
-
-            <div className="space-y-2">
               <Label>Primary Leader</Label>
               <MultiSelectSearch
                 options={sortedPeople}

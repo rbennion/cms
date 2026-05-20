@@ -19,16 +19,16 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - Groups list rows are now fully clickable — added `onRowClick` prop to the shared DataTable. Same on School view's Groups table. (FCC018)
 - Background Check upload UI removed from People detail and Certifications list; status dropdown + Passed checkbox remain as the records of pass. (FCC022)
 - Certification upload error toasts now surface the server-side error message (file too big, invalid type, etc.) instead of a generic "Failed to upload file". Helps end-users self-diagnose. (FCC023)
+- Removed duplicate "Meeting Location" surface on the Group detail/edit form. The legacy `groups.meeting_location` string column is no longer rendered or editable in the UI; the structured `group_meeting_locations` table (with `is_primary` flag) is the canonical store. Migration 006 copies any legacy values into the structured table as the primary location. School view "Meeting Location" column now reads from the structured table. (FCC021)
 
 ### Fixed
 - **Leader count** was undercounting groups with a primary leader. The `leader_count` computed on `/api/groups` and `/api/schools/[id]/groups` now adds 1 when `primary_leader_id IS NOT NULL`. (FCC017)
 - School view's Groups query now joins `people` on `primary_leader_id` so the primary leader's name is available to the UI. (FCC019)
 
 ### Operations
-- New env var none. Migrations 004 and 005 must be applied on prod (`npm run migrate`).
+- New env var none. Migrations 004, 005, and 006 must be applied on prod (`npm run migrate`).
 
 ### Pending / Out of scope
-- **FCC021** "Meeting Location appears twice on School view" — code review shows only one column. Awaiting Brad's screenshot to confirm what he sees duplicated.
 - **FCC026** Sentry SDK wire-up — interactive wizard, will run in a follow-up.
 - **FCC027** Real-device mobile signature pad test — manual QA, will log results separately.
 - **FCC028** Mailbox alias for `waiver@fightclub-us.com` — blocked on custom-domain decision.

@@ -641,7 +641,7 @@ export default function SchoolDetailPage() {
                                 <span className="text-muted-foreground">-</span>
                               )}
                             </TableCell>
-                            <TableCell>{group.meeting_location || "-"}</TableCell>
+                            <TableCell>{group.primary_meeting_location || "-"}</TableCell>
                             <TableCell onClick={(e) => e.stopPropagation()}>
                               <div className="flex items-center gap-2">
                                 <Button

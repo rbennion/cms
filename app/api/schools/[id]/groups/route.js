@@ -22,6 +22,12 @@ export async function GET(request, { params }) {
         pl.first_name as primary_leader_first_name,
         pl.last_name as primary_leader_last_name,
         (
+          SELECT gml.name FROM group_meeting_locations gml
+          WHERE gml.group_id = g.id
+          ORDER BY gml.is_primary DESC, gml.id
+          LIMIT 1
+        ) as primary_meeting_location,
+        (
           (SELECT COUNT(*) FROM group_leaders gl WHERE gl.group_id = g.id)
           + (CASE WHEN g.primary_leader_id IS NOT NULL THEN 1 ELSE 0 END)
         ) as leader_count

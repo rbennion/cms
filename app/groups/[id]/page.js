@@ -502,12 +502,6 @@ export default function GroupDetailPage() {
                       <span className="text-sm">{group.year}</span>
                     </div>
                   )}
-                  {group.meeting_location && (
-                    <div className="flex items-start gap-3">
-                      <MapPin className="h-4 w-4 text-muted-foreground mt-0.5" />
-                      <span className="text-sm">{group.meeting_location}</span>
-                    </div>
-                  )}
                   {group.notes && (
                     <div className="mt-4 pt-4 border-t">
                       <p className="text-sm text-muted-foreground whitespace-pre-wrap">
@@ -586,22 +580,6 @@ export default function GroupDetailPage() {
                         <SelectItem value="Alumni">Alumni</SelectItem>
                       </SelectContent>
                     </Select>
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="meeting_location" className="text-xs">
-                      Meeting Location
-                    </Label>
-                    <Input
-                      id="meeting_location"
-                      value={groupData.meeting_location}
-                      onChange={(e) =>
-                        setGroupData({
-                          ...groupData,
-                          meeting_location: e.target.value,
-                        })
-                      }
-                      className="h-8 text-sm"
-                    />
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="notes" className="text-xs">
