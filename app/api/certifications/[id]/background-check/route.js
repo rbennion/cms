@@ -41,14 +41,14 @@ export async function POST(request, { params }) {
     }
 
     const filename = generateUniqueFilename(file.name)
-    const blob = await put(`documents/${filename}`, buffer, { access: 'public' })
+    const blob = await put(`documents/${filename}`, buffer, { access: 'private' })
 
     await run(
       'UPDATE certifications SET background_check_attachment_path = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?',
-      [blob.url, id]
+      [blob.pathname, id]
     )
 
-    return NextResponse.json({ background_check_attachment_path: blob.url })
+    return NextResponse.json({ background_check_attachment_path: blob.pathname })
   } catch (error) {
     console.error('Error uploading background check document:', error)
     return NextResponse.json({ error: 'Failed to upload background check document' }, { status: 500 })

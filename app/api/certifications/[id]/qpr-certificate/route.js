@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { put } from '@vercel/blob'
+import { put, get as blobGet } from '@vercel/blob'
 import { get, run } from '@/lib/db'
 import { generateUniqueFilename } from '@/lib/utils'
 import { requireAuth } from '@/lib/api-auth'
@@ -40,16 +40,45 @@ export async function POST(request, { params }) {
     }
 
     const filename = generateUniqueFilename(file.name)
-    const blob = await put(`documents/${filename}`, buffer, { access: 'public' })
+    const blob = await put(`documents/${filename}`, buffer, { access: 'private' })
 
     await run(
       'UPDATE certifications SET qpr_certificate_attachment_path = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?',
-      [blob.url, id]
+      [blob.pathname, id]
     )
 
-    return NextResponse.json({ qpr_certificate_attachment_path: blob.url })
+    return NextResponse.json({ qpr_certificate_attachment_path: blob.pathname })
   } catch (error) {
     console.error('Error uploading QPR certificate:', error)
     return NextResponse.json({ error: 'Failed to upload QPR certificate' }, { status: 500 })
   }
+}
+
+export async function GET(request, { params }) {
+  const { error } = await requireAuth()
+  if (error) return error
+
+  const { id } = await params
+  const row = await get(
+    'SELECT qpr_certificate_attachment_path FROM certifications WHERE id = ?',
+    [id]
+  )
+  if (!row?.qpr_certificate_attachment_path) {
+    return NextResponse.json({ error: 'Not found' }, { status: 404 })
+  }
+
+  const path = row.qpr_certificate_attachment_path
+  if (path.startsWith('http')) {
+    return NextResponse.redirect(path, 302)
+  }
+
+  const { stream, headers } = await blobGet(path, { access: 'private' })
+  return new Response(stream, {
+    headers: {
+      'Content-Type': headers?.['content-type'] || 'application/octet-stream',
+      'Content-Disposition': `inline; filename="${path.split('/').pop()}"`,
+      'Cache-Control': 'private, max-age=0, no-cache',
+      ...(headers?.['content-length'] ? { 'Content-Length': headers['content-length'] } : {}),
+    },
+  })
 }

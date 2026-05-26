@@ -1386,7 +1386,7 @@ export default function PersonDetailPage() {
                             <Upload className="h-3 w-3" />
                           </Button>
                           {person.certification.application_attachment_path && (
-                            <a href={person.certification.application_attachment_path} target="_blank" rel="noopener noreferrer">
+                            <a href={`/api/certifications/${person.certification.id}/application`} target="_blank" rel="noopener noreferrer">
                               <FileText className="h-4 w-4 text-primary" />
                             </a>
                           )}
@@ -1404,7 +1404,7 @@ export default function PersonDetailPage() {
                             <Upload className="h-3 w-3" />
                           </Button>
                           {person.certification.qpr_training_attachment_path && (
-                            <a href={person.certification.qpr_training_attachment_path} target="_blank" rel="noopener noreferrer">
+                            <a href={`/api/certifications/${person.certification.id}/training`} target="_blank" rel="noopener noreferrer">
                               <FileText className="h-4 w-4 text-primary" />
                             </a>
                           )}
@@ -1422,7 +1422,7 @@ export default function PersonDetailPage() {
                             <Upload className="h-3 w-3" />
                           </Button>
                           {person.certification.qpr_certificate_attachment_path && (
-                            <a href={person.certification.qpr_certificate_attachment_path} target="_blank" rel="noopener noreferrer">
+                            <a href={`/api/certifications/${person.certification.id}/qpr-certificate`} target="_blank" rel="noopener noreferrer">
                               <FileText className="h-4 w-4 text-primary" />
                             </a>
                           )}
@@ -1480,6 +1480,7 @@ export default function PersonDetailPage() {
                   <input
                     id="cert-file"
                     type="file"
+                    accept=".pdf,.jpg,.jpeg,.png,.doc,.docx"
                     className="mt-2 block w-full text-sm text-muted-foreground
                       file:mr-4 file:py-2 file:px-4
                       file:rounded-md file:border-0
@@ -1489,7 +1490,7 @@ export default function PersonDetailPage() {
                     onChange={handleCertFileUpload}
                   />
                   <p className="mt-2 text-sm text-muted-foreground">
-                    Maximum file size: 10MB
+                    Accepted: PDF, JPG, PNG, DOC, DOCX · Max 10MB
                   </p>
                 </div>
               </DialogContent>

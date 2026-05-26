@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Input } from '@/components/ui/input'
+import { useToast } from '@/components/ui/use-toast'
 import {
   Dialog,
   DialogContent,
@@ -20,16 +21,18 @@ import {
   SelectValue
 } from '@/components/ui/select'
 
+const DEFAULT_FORM = {
+  background_check_status: 'pending',
+  background_check_passed: false,
+  application_received: false,
+  qpr_gatekeeper_training: false,
+  qpr_training_date: '',
+  qpr_training_renewal_date: '',
+}
+
 export function AddCertificationDialog({ open, onOpenChange, personId, personName, onSaved }) {
-  const [formData, setFormData] = useState({
-    status: 'Pending',
-    background_check: false,
-    background_check_passed: false,
-    application_received: false,
-    qpr_gatekeeper_training: false,
-    qpr_training_date: '',
-    qpr_training_renewal_date: '',
-  })
+  const { toast } = useToast()
+  const [formData, setFormData] = useState(DEFAULT_FORM)
   const [saving, setSaving] = useState(false)
 
   async function handleSubmit(e) {
@@ -46,20 +49,23 @@ export function AddCertificationDialog({ open, onOpenChange, personId, personNam
         })
       })
 
-      if (res.ok) {
-        setFormData({
-          status: 'Pending',
-          background_check: false,
-          background_check_passed: false,
-          application_received: false,
-          qpr_gatekeeper_training: false,
-          qpr_training_date: '',
-          qpr_training_renewal_date: '',
-        })
-        onSaved()
+      if (!res.ok) {
+        let serverMessage = `Create failed (HTTP ${res.status})`
+        try {
+          const body = await res.json()
+          if (body?.error) serverMessage = body.error
+        } catch {}
+        throw new Error(serverMessage)
       }
+
+      setFormData(DEFAULT_FORM)
+      onSaved()
     } catch (error) {
-      console.error('Error creating certification:', error)
+      toast({
+        title: 'Could not create certification',
+        description: error.message,
+        variant: 'destructive',
+      })
     } finally {
       setSaving(false)
     }
@@ -74,19 +80,19 @@ export function AddCertificationDialog({ open, onOpenChange, personId, personNam
         <form onSubmit={handleSubmit}>
           <div className="space-y-4 py-4">
             <div className="space-y-2">
-              <Label htmlFor="status">Initial Status</Label>
+              <Label htmlFor="background_check_status">Background Check Status</Label>
               <Select
-                value={formData.status}
-                onValueChange={(value) => setFormData(prev => ({ ...prev, status: value }))}
+                value={formData.background_check_status}
+                onValueChange={(value) => setFormData(prev => ({ ...prev, background_check_status: value }))}
               >
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="Pending">Pending</SelectItem>
-                  <SelectItem value="In Progress">In Progress</SelectItem>
-                  <SelectItem value="Active">Active</SelectItem>
-                  <SelectItem value="Expired">Expired</SelectItem>
+                  <SelectItem value="pending">Pending</SelectItem>
+                  <SelectItem value="approved">Approved</SelectItem>
+                  <SelectItem value="denied">Denied</SelectItem>
+                  <SelectItem value="expired">Expired</SelectItem>
                 </SelectContent>
               </Select>
             </div>

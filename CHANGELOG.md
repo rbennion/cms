@@ -4,6 +4,17 @@ All notable changes to the Fight Club CRM application will be documented in this
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.8.1] - 2026-05-26
+
+### Fixed
+- Create Certification dialog on People detail now surfaces server errors as a toast instead of silently swallowing them. Previously, clicking Create Certification on a person who already had a cert appeared to do nothing because the 400 response was dropped. (FCC033)
+- Add Certification dialog Initial Status dropdown was sending a field name the API did not read, and offered values that violate the database enum. Rewired to background_check_status with the real enum values (pending, approved, denied, expired).
+- QPR Certificate, QPR Training, and Application document uploads now succeed in production. All certification upload routes were passing access public to a Vercel Blob store that v0.7.1 switched to private, causing every new upload since to return HTTP 500. Existing pre-v0.7.1 attachment URLs still resolve via a legacy redirect. (FCC032)
+
+### Changed
+- Certification document uploads now store the blob pathname (private access) instead of a public URL. New auth-gated GET endpoints stream the file to logged-in users only — QPR Certificate, QPR Training, and Application attachments are no longer addressable as public URLs.
+- Upload dialogs on People detail and Certifications list now show accepted file types (PDF, JPG, PNG, DOC, DOCX) and add an accept filter on the file picker so users no longer pick a .txt only to be rejected.
+
 ## [0.8.0] - 2026-05-20
 
 ### Added

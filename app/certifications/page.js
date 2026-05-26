@@ -630,7 +630,7 @@ export default function CertificationsPage() {
                               <Upload className="h-3 w-3" />
                             </Button>
                             {cert.application_attachment_path && (
-                              <a href={cert.application_attachment_path} target="_blank" rel="noopener noreferrer">
+                              <a href={`/api/certifications/${cert.id}/application`} target="_blank" rel="noopener noreferrer">
                                 <FileText className="h-3 w-3 text-primary" />
                               </a>
                             )}
@@ -695,7 +695,7 @@ export default function CertificationsPage() {
                               <Upload className="h-3 w-3" />
                             </Button>
                             {cert.qpr_training_attachment_path && (
-                              <a href={cert.qpr_training_attachment_path} target="_blank" rel="noopener noreferrer">
+                              <a href={`/api/certifications/${cert.id}/training`} target="_blank" rel="noopener noreferrer">
                                 <FileText className="h-3 w-3 text-primary" />
                               </a>
                             )}
@@ -725,7 +725,7 @@ export default function CertificationsPage() {
                             <Upload className="h-3 w-3" />
                           </Button>
                           {cert.qpr_certificate_attachment_path && (
-                            <a href={cert.qpr_certificate_attachment_path} target="_blank" rel="noopener noreferrer">
+                            <a href={`/api/certifications/${cert.id}/qpr-certificate`} target="_blank" rel="noopener noreferrer">
                               <FileText className="h-3 w-3 text-primary" />
                             </a>
                           )}
@@ -814,6 +814,7 @@ export default function CertificationsPage() {
             <input
               id="file"
               type="file"
+              accept=".pdf,.jpg,.jpeg,.png,.doc,.docx"
               className="mt-2 block w-full text-sm text-muted-foreground
                 file:mr-4 file:py-2 file:px-4
                 file:rounded-md file:border-0
@@ -823,7 +824,7 @@ export default function CertificationsPage() {
               onChange={handleFileUpload}
             />
             <p className="mt-2 text-sm text-muted-foreground">
-              Maximum file size: 10MB
+              Accepted: PDF, JPG, PNG, DOC, DOCX · Max 10MB
             </p>
           </div>
         </DialogContent>
