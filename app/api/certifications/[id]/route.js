@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { get, run } from '@/lib/db'
+import { attachBgExpiry } from '@/lib/certifications-server'
 import { requireAuth } from '@/lib/api-auth'
 
 export const dynamic = 'force-dynamic'
@@ -23,7 +24,7 @@ export async function GET(request, { params }) {
       return NextResponse.json({ error: 'Certification not found' }, { status: 404 })
     }
 
-    return NextResponse.json(certification)
+    return NextResponse.json(await attachBgExpiry(certification))
   } catch (error) {
     console.error('Error fetching certification:', error)
     return NextResponse.json({ error: 'Failed to fetch certification' }, { status: 500 })
@@ -37,17 +38,22 @@ export async function PUT(request, { params }) {
 
     const { id } = await params
     const body = await request.json()
-    const { background_check_status, background_check_passed, application_received, qpr_gatekeeper_training, qpr_training_date, qpr_training_renewal_date } = body
+    const { background_check_status, background_check_date, application_received, qpr_gatekeeper_training, qpr_training_date, qpr_training_renewal_date } = body
 
     const existing = await get('SELECT * FROM certifications WHERE id = ?', [id])
     if (!existing) {
       return NextResponse.json({ error: 'Certification not found' }, { status: 404 })
     }
 
+    const status = background_check_status || existing.background_check_status || 'pending'
+
+    // background_check_passed is derived from the status so the two columns
+    // can never disagree.
     await run(
       `UPDATE certifications SET
         background_check_status = ?,
         background_check_passed = ?,
+        background_check_date = ?,
         application_received = ?,
         qpr_gatekeeper_training = ?,
         qpr_training_date = ?,
@@ -55,8 +61,9 @@ export async function PUT(request, { params }) {
         updated_at = CURRENT_TIMESTAMP
        WHERE id = ?`,
       [
-        background_check_status || existing.background_check_status,
-        background_check_passed !== undefined ? !!background_check_passed : !!existing.background_check_passed,
+        status,
+        status === 'approved',
+        background_check_date !== undefined ? background_check_date : existing.background_check_date,
         application_received !== undefined ? (application_received ? 1 : 0) : existing.application_received,
         qpr_gatekeeper_training !== undefined ? (qpr_gatekeeper_training ? 1 : 0) : existing.qpr_gatekeeper_training,
         qpr_training_date !== undefined ? qpr_training_date : existing.qpr_training_date,
@@ -65,7 +72,7 @@ export async function PUT(request, { params }) {
       ]
     )
 
-    const certification = await get('SELECT * FROM certifications WHERE id = ?', [id])
+    const certification = await attachBgExpiry(await get('SELECT * FROM certifications WHERE id = ?', [id]))
 
     return NextResponse.json(certification)
   } catch (error) {

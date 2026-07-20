@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { put, get as blobGet } from '@vercel/blob'
+import { put, del, get as blobGet } from '@vercel/blob'
 import { get, run } from '@/lib/db'
 import { generateUniqueFilename } from '@/lib/utils'
 import { requireAuth } from '@/lib/api-auth'
@@ -46,6 +46,17 @@ export async function POST(request, { params }) {
       'UPDATE certifications SET application_attachment_path = ?, application_received = 1, updated_at = CURRENT_TIMESTAMP WHERE id = ?',
       [blob.pathname, id]
     )
+
+    // Replacing a document deletes the old file from blob storage.
+    // Legacy http(s) paths (public store) are left alone.
+    const oldPath = certification.application_attachment_path
+    if (oldPath && oldPath !== blob.pathname && !oldPath.startsWith('http')) {
+      try {
+        await del(oldPath)
+      } catch (cleanupError) {
+        console.error('Failed to delete replaced application:', cleanupError)
+      }
+    }
 
     return NextResponse.json({ application_attachment_path: blob.pathname })
   } catch (error) {

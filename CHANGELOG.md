@@ -4,6 +4,32 @@ All notable changes to the Fight Club CRM application will be documented in this
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.9.0] - 2026-07-20
+
+### Added
+- Waivers page in the main navigation — every waiver request in one list with plain-language status, a Sent → Signed → Document progress line, name/email search, and count cards (Waiting for Signature / Link Expired / Signed) that filter on click.
+- Record Paper Waiver — upload a scan or phone photo (PDF, JPG, PNG) of a form signed in person, right from the person's Waivers card. Stored as a signed waiver marked "Paper form on file" with the same View button as e-signed waivers. (migration 008)
+- Background check Check Date field. Expiration is computed from the check date plus a policy period (default 2 years, stored in app settings) and shown in plain words — "Valid until Jun 3, 2028" or "Expired May 1, 2025 — needs a new check". Expiring and expired checks drive the overall certification status automatically. (migration 007)
+- Certification documents now show their file name, size, and upload date. Original file names are preserved on new uploads; older files show accurate dates recovered from storage.
+- Overall certification status line with the reason spelled out — for example "Expired — background check expired May 1, 2025" or "In Progress — 2 of 3 requirements met".
+
+### Changed
+- Certifications page redesigned as a roster: one computed status per person (Certified / In Progress / Needs Attention / Not Started), check icons for the three requirements, and clicking a row opens the checklist in a side panel. The Add Certification dialog is gone — every person implicitly has a checklist, created automatically on first edit or upload.
+- The certification checklist is now a single edit surface used on both the Certifications page and the People record. Controls are live and save on change — no edit mode, no pencil icon. Document actions are labeled buttons: Upload, View, Replace.
+- Replacing a certification document now deletes the old file from storage instead of leaving it orphaned.
+- Background check "passed" is derived from the status (Passed means approved) — the separate Passed checkbox is gone and the two fields can no longer disagree. The manual "Expired" dropdown option is removed; expiry is computed from the check date. Migration 009 reconciles existing rows once so no record loses its passed state.
+- QPR Certificate is folded into the QPR Training block — the card reads as exactly three steps: Application, Background Check, QPR Training.
+- Waiver rows state their step in a sentence — "Sent Jul 20 — link expires Aug 19", "Link expired Jul 15 — send a new one", "Signed by Jane Doe on May 10". Expired links are detected automatically instead of showing "pending" forever, and the resend button relabels to "Send new link" when the link is dead.
+- Viewing a signed waiver generates the PDF automatically on first view — the separate "Generate PDF" step is gone.
+
+### Fixed
+- All four Certifications regressions from the 5/27 QA (FCC034): saving a certification from the People record no longer errors (the API now updates the existing record instead of rejecting), document attach is available from the start, selecting a person in a search dropdown now visibly shows the selection, and adding a certification from the list view works via the new panel.
+- Single-select search dropdowns across People, Companies, and Schools association flows now display the chosen item instead of appearing to do nothing.
+
+### Operations
+- Migrations 007 (background check date + policy setting), 008 (paper waivers), and 009 (background check field reconciliation) apply automatically during the Vercel build.
+- README deployment section rewritten to match the real pipeline (push to main, build-time migrations, full environment variable table).
+
 ## [0.8.1] - 2026-05-26
 
 ### Fixed

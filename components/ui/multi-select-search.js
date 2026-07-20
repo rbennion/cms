@@ -58,7 +58,7 @@ export function MultiSelectSearch({
   return (
     <div ref={containerRef} className="relative">
       {/* Selected items */}
-      {!singleSelect && selected.length > 0 && (
+      {selected.length > 0 && (
         <div className="flex flex-wrap gap-1 mb-2">
           {selected.map((item) => (
             <Badge key={item.id} variant="secondary" className="gap-1">

@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { all, run, get } from '@/lib/db'
+import { attachBgExpiry } from '@/lib/certifications-server'
 import { requireAuth } from '@/lib/api-auth'
 
 export const dynamic = 'force-dynamic'
@@ -40,7 +41,7 @@ export async function GET(request) {
 
     query += ' ORDER BY p.last_name, p.first_name'
 
-    const certifications = await all(query, params)
+    const certifications = await attachBgExpiry(await all(query, params))
 
     return NextResponse.json(certifications)
   } catch (error) {
@@ -55,25 +56,58 @@ export async function POST(request) {
     if (error) return error
 
     const body = await request.json()
-    const { person_id, background_check_status, background_check_passed, application_received, qpr_gatekeeper_training, qpr_training_date, qpr_training_renewal_date } = body
+    const { person_id, background_check_status, background_check_date, application_received, qpr_gatekeeper_training, qpr_training_date, qpr_training_renewal_date } = body
 
     if (!person_id) {
       return NextResponse.json({ error: 'Person ID is required' }, { status: 400 })
     }
 
-    // Check if certification already exists
-    const existing = await get('SELECT * FROM certifications WHERE person_id = ?', [person_id])
-    if (existing) {
-      return NextResponse.json({ error: 'Certification already exists for this person' }, { status: 400 })
+    const person = await get('SELECT id FROM people WHERE id = ?', [person_id])
+    if (!person) {
+      return NextResponse.json({ error: 'Person not found' }, { status: 404 })
     }
 
+    // Upsert: one certification checklist per person. Fields left undefined
+    // keep their existing values. background_check_passed is derived from the
+    // status so the two columns can never disagree.
+    const existing = await get('SELECT * FROM certifications WHERE person_id = ?', [person_id])
+
+    if (existing) {
+      const status = background_check_status || existing.background_check_status || 'pending'
+      await run(
+        `UPDATE certifications SET
+          background_check_status = ?,
+          background_check_passed = ?,
+          background_check_date = ?,
+          application_received = ?,
+          qpr_gatekeeper_training = ?,
+          qpr_training_date = ?,
+          qpr_training_renewal_date = ?,
+          updated_at = CURRENT_TIMESTAMP
+         WHERE id = ?`,
+        [
+          status,
+          status === 'approved',
+          background_check_date !== undefined ? background_check_date : existing.background_check_date,
+          application_received !== undefined ? (application_received ? 1 : 0) : existing.application_received,
+          qpr_gatekeeper_training !== undefined ? (qpr_gatekeeper_training ? 1 : 0) : existing.qpr_gatekeeper_training,
+          qpr_training_date !== undefined ? qpr_training_date : existing.qpr_training_date,
+          qpr_training_renewal_date !== undefined ? qpr_training_renewal_date : existing.qpr_training_renewal_date,
+          existing.id
+        ]
+      )
+      const certification = await attachBgExpiry(await get('SELECT * FROM certifications WHERE id = ?', [existing.id]))
+      return NextResponse.json(certification)
+    }
+
+    const status = background_check_status || 'pending'
     const result = await run(
-      `INSERT INTO certifications (person_id, background_check_status, background_check_passed, application_received, qpr_gatekeeper_training, qpr_training_date, qpr_training_renewal_date)
-       VALUES (?, ?, ?, ?, ?, ?, ?)`,
-      [person_id, background_check_status || 'pending', background_check_passed ? true : false, application_received ? 1 : 0, qpr_gatekeeper_training ? 1 : 0, qpr_training_date || null, qpr_training_renewal_date || null]
+      `INSERT INTO certifications (person_id, background_check_status, background_check_passed, background_check_date, application_received, qpr_gatekeeper_training, qpr_training_date, qpr_training_renewal_date)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+      [person_id, status, status === 'approved', background_check_date || null, application_received ? 1 : 0, qpr_gatekeeper_training ? 1 : 0, qpr_training_date || null, qpr_training_renewal_date || null]
     )
 
-    const certification = await get('SELECT * FROM certifications WHERE id = ?', [result.lastInsertRowid])
+    const certification = await attachBgExpiry(await get('SELECT * FROM certifications WHERE id = ?', [result.lastInsertRowid]))
 
     return NextResponse.json(certification, { status: 201 })
   } catch (error) {

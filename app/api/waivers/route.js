@@ -15,7 +15,7 @@ export async function GET(request) {
 
   const rows = personId
     ? await all(
-        `SELECT w.id, w.person_id, w.status, w.sent_to_email, w.sent_at,
+        `SELECT w.id, w.person_id, w.status, w.source, w.sent_to_email, w.sent_at,
                 w.expires_at, w.signed_at, w.liability_release_choice,
                 w.photo_release_choice, w.signed_pdf_path, w.signed_pdf_sha256,
                 w.participant_name, w.signer_name
@@ -25,9 +25,9 @@ export async function GET(request) {
         [personId]
       )
     : await all(
-        `SELECT w.id, w.person_id, w.status, w.sent_to_email, w.sent_at,
+        `SELECT w.id, w.person_id, w.status, w.source, w.sent_to_email, w.sent_at,
                 w.expires_at, w.signed_at, w.liability_release_choice,
-                w.photo_release_choice, w.signed_pdf_path,
+                w.photo_release_choice, w.signed_pdf_path, w.signer_name,
                 p.first_name, p.last_name
          FROM waivers w
          JOIN people p ON p.id = w.person_id

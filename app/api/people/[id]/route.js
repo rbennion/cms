@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { get, run, all } from "@/lib/db";
+import { attachBgExpiry } from "@/lib/certifications-server";
 import { requireAuth } from "@/lib/api-auth";
 
 export const dynamic = 'force-dynamic'
@@ -69,9 +70,8 @@ export async function GET(request, { params }) {
     }
 
     // Get certification
-    const certification = await get(
-      "SELECT * FROM certifications WHERE person_id = ?",
-      [id]
+    const certification = await attachBgExpiry(
+      await get("SELECT * FROM certifications WHERE person_id = ?", [id])
     );
 
     // Get recent donations

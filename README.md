@@ -228,26 +228,39 @@ Export filtered data to CSV from any list view using the Export button.
 
 ## Deployment
 
-### Vercel (Recommended)
+Production runs on Vercel (Hobby plan) with a Neon-hosted Postgres database. Deploying is a git push:
 
-1. Push your code to GitHub/GitLab/Bitbucket
-2. Import project in Vercel
-3. Add environment variables in Vercel dashboard
-4. Deploy!
+1. Commit to `main` and push to GitHub. There are no feature branches — `main` is production.
+2. Vercel builds automatically. The build script is `node scripts/migrate.js && next build`, so any pending SQL files in `migrations/` are applied to the **production** database during the build. Migrations are additive-only; a failed migration fails the build and nothing deploys.
+3. When the build shows READY, the release is live at the production URL (`cms-eight-silk.vercel.app`).
 
-### Environment Variables for Production
+Check deploy status from the CLI with `vercel ls` / `vercel inspect <url>`.
 
-```env
-POSTGRES_URL=<your_production_database_url>
-POSTGRES_URL_NON_POOLING=<your_production_database_url_non_pooling>
-AUTH_SECRET=<generate_secure_random_string>
-NEXTAUTH_URL=https://your-domain.com
-```
+Rollback: there are no down-migrations. Code rolls back by redeploying a previous commit from the Vercel dashboard; data rolls back via Neon point-in-time restore (24-hour window). See `BACKUP.md` for backup and restore procedures.
 
-### Database Setup
+### Environment Variables (set in Vercel on Production, Preview, and Development)
 
-1. Run migrations: `npm run init-db`
-2. Create initial admin user through registration or seed script
+| Variable | Purpose |
+|----------|---------|
+| `POSTGRES_URL` | Pooled Neon connection string — used at runtime and by build-time migrations |
+| `POSTGRES_URL_NON_POOLING` | Direct (non-pooled) connection — used by backup/restore scripts |
+| `AUTH_SECRET` | next-auth session signing secret |
+| `NEXTAUTH_URL` | Canonical app URL for auth callbacks |
+| `BLOB_READ_WRITE_TOKEN` | Vercel Blob (private store) — signed waiver PDFs and certification documents |
+| `MS_TENANT_ID`, `MS_CLIENT_ID`, `MS_CLIENT_SECRET` | Azure AD app credentials for M365 OAuth2 SMTP (waiver emails) |
+| `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER` | M365 SMTP endpoint (`smtp.office365.com:587`) and mailbox |
+| `EMAIL_FROM`, `EMAIL_FROM_NAME` | From address and display name on outgoing waiver email |
+| `NEXT_PUBLIC_APP_URL` | Public base URL used to build waiver signing links |
+| `SETUP_SECRET` (optional) | Protects the database initialization endpoints |
+
+Note: Vercel preview and production share the same Neon database — a migration applied by a preview build affects production data.
+
+### Local Development
+
+1. Copy the variables above into `.env.local`, pointing `POSTGRES_URL` at a dev database — never at Neon.
+2. `npm install && npm run dev`
+3. Apply schema: `POSTGRES_URL=<dev url> npm run migrate` (the migrate script does not read `.env.local` itself). `npm run migrate:status` shows what's applied; `npm run seed` loads sample data.
+4. Without the M365 variables set, waiver emails are not sent — the signing link is logged to the console instead.
 
 ## UX Design Patterns
 

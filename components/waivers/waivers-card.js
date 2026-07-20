@@ -1,9 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -14,16 +13,10 @@ import {
   DialogTitle,
   DialogDescription,
 } from "@/components/ui/dialog";
-import { FileSignature, Send, RotateCw, ExternalLink, Loader2, FileDown } from "lucide-react";
+import { FileSignature, Send, RotateCw, FileText, Loader2, Upload } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
-import { formatDate } from "@/lib/utils";
-
-const STATUS_VARIANT = {
-  pending: "secondary",
-  signed: "default",
-  declined: "destructive",
-  expired: "outline",
-};
+import { deriveWaiverStatus } from "@/lib/waivers";
+import { WaiverStatusLine, WaiverSteps } from "@/components/waivers/waiver-status";
 
 export function WaiversCard({ personId, defaultEmail }) {
   const { toast } = useToast();
@@ -32,6 +25,8 @@ export function WaiversCard({ personId, defaultEmail }) {
   const [showRequest, setShowRequest] = useState(false);
   const [email, setEmail] = useState(defaultEmail || "");
   const [submitting, setSubmitting] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const paperFileRef = useRef(null);
 
   useEffect(() => {
     setEmail(defaultEmail || "");
@@ -94,28 +89,60 @@ export function WaiversCard({ personId, defaultEmail }) {
     }
   }
 
-  async function generatePdf(id) {
-    toast({ title: "Generating PDF…", description: "This may take a moment on first run." });
-    const res = await fetch(`/api/waivers/${id}/pdf`, { method: "POST" });
-    const data = await res.json();
-    if (!res.ok) {
-      toast({ title: "PDF generation failed", description: data.error, variant: "destructive" });
-    } else {
-      toast({ title: "PDF generated" });
-      load();
+  async function uploadPaperWaiver(e) {
+    const file = e.target.files[0];
+    e.target.value = "";
+    if (!file) return;
+    setUploading(true);
+    try {
+      const formData = new FormData();
+      formData.append("person_id", String(personId));
+      formData.append("file", file);
+      const res = await fetch("/api/waivers/paper", { method: "POST", body: formData });
+      const data = await res.json();
+      if (!res.ok) {
+        toast({ title: "Upload failed", description: data.error, variant: "destructive" });
+      } else {
+        toast({ title: "Paper waiver recorded" });
+        load();
+      }
+    } finally {
+      setUploading(false);
     }
   }
 
   return (
     <>
+      <input
+        ref={paperFileRef}
+        type="file"
+        accept=".pdf,.jpg,.jpeg,.png"
+        className="hidden"
+        onChange={uploadPaperWaiver}
+      />
       <Card>
         <CardHeader className="flex flex-row items-center justify-between">
           <CardTitle className="flex items-center gap-2">
             <FileSignature className="h-5 w-5" /> Waivers
           </CardTitle>
-          <Button size="sm" onClick={() => setShowRequest(true)}>
-            <Send className="mr-2 h-4 w-4" /> Request Waiver
-          </Button>
+          <div className="flex gap-2">
+            <Button
+              size="sm"
+              variant="outline"
+              disabled={uploading}
+              onClick={() => paperFileRef.current?.click()}
+            >
+              {uploading ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              ) : (
+                <Upload className="mr-2 h-4 w-4" />
+              )}
+              Record Paper Waiver
+            </Button>
+            <Button size="sm" onClick={() => setShowRequest(true)}>
+              <Send className="mr-2 h-4 w-4" /> Request Waiver
+            </Button>
+          </div>
         </CardHeader>
         <CardContent>
           {loading ? (
@@ -126,68 +153,47 @@ export function WaiversCard({ personId, defaultEmail }) {
             </p>
           ) : (
             <div className="space-y-3">
-              {waivers.map((w) => (
-                <div
-                  key={w.id}
-                  className="flex flex-col gap-2 rounded-md border p-3 sm:flex-row sm:items-center sm:justify-between"
-                >
-                  <div className="space-y-1">
-                    <div className="flex items-center gap-2">
-                      <Badge variant={STATUS_VARIANT[w.status] || "outline"}>
-                        {w.status}
-                      </Badge>
-                      <span className="text-sm font-medium">{w.sent_to_email}</span>
+              {waivers.map((w) => {
+                const status = deriveWaiverStatus(w);
+                return (
+                  <div
+                    key={w.id}
+                    className="flex flex-col gap-2 rounded-md border p-3 sm:flex-row sm:items-center sm:justify-between"
+                  >
+                    <div className="space-y-2">
+                      <WaiverStatusLine waiver={w} />
+                      <WaiverSteps waiver={w} />
+                      {w.status === "signed" && w.source !== "paper" && (
+                        <div className="text-xs text-muted-foreground">
+                          Liability:{" "}
+                          <span className="font-medium">
+                            {w.liability_release_choice === "release" ? "Released" : "Not released"}
+                          </span>{" "}
+                          · Photo:{" "}
+                          <span className="font-medium">
+                            {w.photo_release_choice === "allow" ? "Allowed" : "Not allowed"}
+                          </span>
+                        </div>
+                      )}
                     </div>
-                    <div className="text-xs text-muted-foreground">
-                      Sent {formatDate(w.sent_at)}
-                      {w.signed_at && <> · Signed {formatDate(w.signed_at)}</>}
+                    <div className="flex gap-2 shrink-0">
+                      {w.status === "signed" && (
+                        <Button size="sm" variant="outline" asChild>
+                          <a href={`/api/waivers/${w.id}/pdf`} target="_blank" rel="noreferrer">
+                            <FileText className="mr-1 h-3 w-3" /> View signed waiver
+                          </a>
+                        </Button>
+                      )}
+                      {(status.key === "waiting" || status.key === "expired") && (
+                        <Button size="sm" variant="outline" onClick={() => resend(w.id)}>
+                          <RotateCw className="mr-1 h-3 w-3" />
+                          {status.key === "expired" ? "Send new link" : "Resend"}
+                        </Button>
+                      )}
                     </div>
-                    {w.status === "signed" && (
-                      <div className="text-xs text-muted-foreground">
-                        Liability:{" "}
-                        <span className="font-medium">
-                          {w.liability_release_choice === "release" ? "Released" : "Not released"}
-                        </span>{" "}
-                        · Photo:{" "}
-                        <span className="font-medium">
-                          {w.photo_release_choice === "allow" ? "Allowed" : "Not allowed"}
-                        </span>
-                      </div>
-                    )}
                   </div>
-                  <div className="flex gap-2">
-                    {w.signed_pdf_path && (
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        asChild
-                      >
-                        <a href={`/api/waivers/${w.id}/pdf`} target="_blank" rel="noreferrer">
-                          <ExternalLink className="mr-1 h-3 w-3" /> PDF
-                        </a>
-                      </Button>
-                    )}
-                    {w.status === "signed" && !w.signed_pdf_path && (
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => generatePdf(w.id)}
-                      >
-                        <FileDown className="mr-1 h-3 w-3" /> Generate PDF
-                      </Button>
-                    )}
-                    {w.status === "pending" && (
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => resend(w.id)}
-                      >
-                        <RotateCw className="mr-1 h-3 w-3" /> Resend
-                      </Button>
-                    )}
-                  </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </CardContent>

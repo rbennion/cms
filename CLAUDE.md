@@ -64,7 +64,7 @@ Client components fetch from `/api/` endpoints → API routes use `lib/db.js` qu
 
 ### Navigation Structure
 
-- **Main entities**: Dashboard, People, Companies, Schools, Donations, Certifications, Settings (in that order)
+- **Main entities**: Dashboard, People, Companies, Schools, Groups, Donations, Certifications, Waivers, Settings (in that order)
 - Schools is a first-class entity in main nav, NOT in settings
 - Settings contains only: Person Types and Users (admin only)
 
