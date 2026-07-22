@@ -74,6 +74,23 @@ export async function GET(request, { params }) {
       await get("SELECT * FROM certifications WHERE person_id = ?", [id])
     );
 
+    // Get group memberships across all four roles
+    const groups = await all(
+      `SELECT g.id, g.name, g.year, 'primary_leader' AS role
+         FROM groups g WHERE g.primary_leader_id = ?
+       UNION ALL
+       SELECT g.id, g.name, g.year, 'support_leader'
+         FROM groups g JOIN group_leaders gl ON gl.group_id = g.id WHERE gl.person_id = ?
+       UNION ALL
+       SELECT g.id, g.name, g.year, 'student'
+         FROM groups g JOIN group_students gs ON gs.group_id = g.id WHERE gs.person_id = ?
+       UNION ALL
+       SELECT g.id, g.name, g.year, 'parent'
+         FROM groups g JOIN group_parents gp ON gp.group_id = g.id WHERE gp.person_id = ?
+       ORDER BY name, role`,
+      [id, id, id, id]
+    );
+
     // Get recent donations
     const donations = await all(
       `
@@ -114,6 +131,7 @@ export async function GET(request, { params }) {
       stage,
       schools,
       certification,
+      groups,
       donations,
       notes,
       family_members,
@@ -179,10 +197,17 @@ export async function PUT(request, { params }) {
         first_name !== undefined ? first_name : existing.first_name;
       const updatedLastName =
         last_name !== undefined ? last_name : existing.last_name;
+      const updatedEmail = email !== undefined ? email : existing.email;
+      const updatedPhone = phone !== undefined ? phone : existing.phone;
 
-      if (!updatedFirstName || !updatedLastName) {
+      if (
+        !updatedFirstName?.trim() ||
+        !updatedLastName?.trim() ||
+        !updatedEmail?.trim() ||
+        !updatedPhone?.trim()
+      ) {
         return NextResponse.json(
-          { error: "First name and last name are required" },
+          { error: "Name, email, and phone are required" },
           { status: 400 }
         );
       }

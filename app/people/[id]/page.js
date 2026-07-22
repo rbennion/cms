@@ -46,6 +46,7 @@ import {
   X,
   Plus,
   Users,
+  UsersRound,
   TrendingUp,
   ArrowLeft,
 } from "lucide-react";
@@ -75,8 +76,11 @@ export default function PersonDetailPage() {
   const [allRoles, setAllRoles] = useState([]);
   const [allStages, setAllStages] = useState([]);
   const [allPeople, setAllPeople] = useState([]);
+  const [allGroups, setAllGroups] = useState([]);
   const [showCompanyAdd, setShowCompanyAdd] = useState(false);
   const [showSchoolAdd, setShowSchoolAdd] = useState(false);
+  const [showGroupAdd, setShowGroupAdd] = useState(false);
+  const [newGroupRole, setNewGroupRole] = useState("student");
   const [showRoleEdit, setShowRoleEdit] = useState(false);
   const [showStageEdit, setShowStageEdit] = useState(false);
   const [showFamilyAdd, setShowFamilyAdd] = useState(false);
@@ -99,23 +103,26 @@ export default function PersonDetailPage() {
 
   const fetchOptions = async () => {
     try {
-      const [companiesRes, schoolsRes, rolesRes, stagesRes, peopleRes] = await Promise.all([
+      const [companiesRes, schoolsRes, rolesRes, stagesRes, peopleRes, groupsRes] = await Promise.all([
         fetch("/api/companies?limit=1000"),
         fetch("/api/schools"),
         fetch("/api/roles"),
         fetch("/api/engagement-stages"),
         fetch("/api/people?limit=1000"),
+        fetch("/api/groups?limit=1000"),
       ]);
       const companiesData = await companiesRes.json();
       const schoolsData = await schoolsRes.json();
       const rolesData = await rolesRes.json();
       const stagesData = await stagesRes.json();
       const peopleData = await peopleRes.json();
+      const groupsData = await groupsRes.json();
       setAllCompanies(companiesData.data || companiesData || []);
       setAllSchools(Array.isArray(schoolsData) ? schoolsData : []);
       setAllRoles(Array.isArray(rolesData) ? rolesData : []);
       setAllStages(Array.isArray(stagesData) ? stagesData : []);
       setAllPeople(peopleData.data || peopleData || []);
+      setAllGroups(groupsData.data || []);
     } catch (error) {
       console.error("Error fetching options:", error);
     }
@@ -278,6 +285,46 @@ export default function PersonDetailPage() {
       });
       if (!res.ok) throw new Error("Failed to remove school");
       toast({ title: "School removed successfully" });
+      fetchPerson();
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleAddGroup = async (group) => {
+    try {
+      const res = await fetch(`/api/people/${params.id}/groups`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ group_id: group.id, role: newGroupRole }),
+      });
+      if (!res.ok) {
+        const error = await res.json();
+        throw new Error(error.error || "Failed to add group");
+      }
+      toast({ title: "Added to group" });
+      fetchPerson();
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleRemoveGroup = async (groupId, role) => {
+    try {
+      const res = await fetch(
+        `/api/people/${params.id}/groups?group_id=${groupId}&role=${role}`,
+        { method: "DELETE" }
+      );
+      if (!res.ok) throw new Error("Failed to remove from group");
+      toast({ title: "Removed from group" });
       fetchPerson();
     } catch (error) {
       toast({
@@ -610,7 +657,7 @@ export default function PersonDetailPage() {
                 <div className="mt-6 space-y-4">
                   <div className="space-y-2">
                     <Label htmlFor="first_name" className="text-xs">
-                      First Name
+                      First Name *
                     </Label>
                     <Input
                       id="first_name"
@@ -626,7 +673,7 @@ export default function PersonDetailPage() {
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="last_name" className="text-xs">
-                      Last Name
+                      Last Name *
                     </Label>
                     <Input
                       id="last_name"
@@ -642,7 +689,7 @@ export default function PersonDetailPage() {
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="email" className="text-xs">
-                      Email
+                      Email *
                     </Label>
                     <Input
                       id="email"
@@ -659,7 +706,7 @@ export default function PersonDetailPage() {
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="phone" className="text-xs">
-                      Phone
+                      Phone *
                     </Label>
                     <Input
                       id="phone"
@@ -1123,6 +1170,117 @@ export default function PersonDetailPage() {
                         >
                           <X className="h-4 w-4" />
                         </Button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* Groups Card */}
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between">
+                <CardTitle className="flex items-center gap-2">
+                  <UsersRound className="h-5 w-5" />
+                  Groups
+                </CardTitle>
+                {!showGroupAdd && (
+                  <Button size="sm" onClick={() => setShowGroupAdd(true)}>
+                    Add
+                  </Button>
+                )}
+              </CardHeader>
+              <CardContent>
+                {showGroupAdd && (
+                  <div className="mb-4 p-3 border rounded-lg bg-muted/50">
+                    <Label className="text-xs mb-2 block">
+                      Add this person to a group as
+                    </Label>
+                    <div className="flex flex-col sm:flex-row gap-2">
+                      <Select value={newGroupRole} onValueChange={setNewGroupRole}>
+                        <SelectTrigger className="w-full sm:w-40">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="student">Student</SelectItem>
+                          <SelectItem value="parent">Parent</SelectItem>
+                          <SelectItem value="support_leader">Support Leader</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <div className="flex-1">
+                        <MultiSelectSearch
+                          options={allGroups.filter(
+                            (g) =>
+                              !person.groups?.some(
+                                (pg) => pg.id === g.id && pg.role === newGroupRole
+                              )
+                          )}
+                          selected={[]}
+                          onChange={(selected) => {
+                            if (selected.length > 0) {
+                              handleAddGroup(selected[0]);
+                            }
+                          }}
+                          placeholder="Search groups..."
+                          renderOption={(g) => g.name}
+                          singleSelect
+                        />
+                      </div>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => setShowGroupAdd(false)}
+                        className="self-end sm:self-auto"
+                      >
+                        <X className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </div>
+                )}
+                {!person.groups || person.groups.length === 0 ? (
+                  <p className="text-muted-foreground text-center py-4">
+                    Not in any groups
+                  </p>
+                ) : (
+                  <div className="space-y-2">
+                    {person.groups.map((group) => (
+                      <div
+                        key={`${group.id}-${group.role}`}
+                        className="flex items-center justify-between p-3 border rounded-lg hover:bg-muted/50 transition-colors"
+                      >
+                        <div className="flex items-center gap-2">
+                          <Link
+                            href={`/groups/${group.id}`}
+                            className="font-medium hover:underline"
+                          >
+                            {group.name}
+                          </Link>
+                          <Badge variant="secondary">
+                            {group.role === "primary_leader"
+                              ? "Primary Leader"
+                              : group.role === "support_leader"
+                              ? "Support Leader"
+                              : group.role === "student"
+                              ? "Student"
+                              : "Parent"}
+                          </Badge>
+                        </div>
+                        {group.role === "primary_leader" ? (
+                          <span
+                            className="text-xs text-muted-foreground"
+                            title="The primary leader is set on the group page"
+                          >
+                            Set on group
+                          </span>
+                        ) : (
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => handleRemoveGroup(group.id, group.role)}
+                          >
+                            <X className="h-4 w-4" />
+                          </Button>
+                        )}
                       </div>
                     ))}
                   </div>

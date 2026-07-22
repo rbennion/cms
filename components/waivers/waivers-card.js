@@ -93,6 +93,17 @@ export function WaiversCard({ personId, defaultEmail }) {
     const file = e.target.files[0];
     e.target.value = "";
     if (!file) return;
+    // Vercel drops request bodies over ~4.5 MB with an unhelpful network
+    // error — catch oversized scans/photos here with a clear message.
+    if (file.size > 4 * 1024 * 1024) {
+      const mb = (file.size / (1024 * 1024)).toFixed(1);
+      toast({
+        title: "File too large",
+        description: `This file is ${mb} MB — the limit is 4 MB. Try a smaller scan or a compressed photo.`,
+        variant: "destructive",
+      });
+      return;
+    }
     setUploading(true);
     try {
       const formData = new FormData();

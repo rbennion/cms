@@ -167,7 +167,7 @@ export function PersonForm({ person, isEdit = false }) {
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="email">Email</Label>
+            <Label htmlFor="email">Email *</Label>
             <Input
               id="email"
               type="email"
@@ -175,16 +175,18 @@ export function PersonForm({ person, isEdit = false }) {
               onChange={(e) =>
                 setFormData({ ...formData, email: e.target.value })
               }
+              required
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="phone">Phone</Label>
+            <Label htmlFor="phone">Phone *</Label>
             <Input
               id="phone"
               value={formData.phone}
               onChange={(e) =>
                 setFormData({ ...formData, phone: e.target.value })
               }
+              required
             />
           </div>
           <div className="space-y-2">

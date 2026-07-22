@@ -4,6 +4,21 @@ All notable changes to the Fight Club CRM application will be documented in this
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.9.1] - 2026-07-22
+
+### Added
+- Groups on the People record — a new Groups card shows every group a person belongs to with their role (Primary Leader, Support Leader, Student, or Parent). Add someone to a group right from their record by picking a role and searching for the group; remove with the X. The primary leader is still set on the group page.
+- Name, email, and phone are now required when creating or editing a person.
+
+### Changed
+- The Training document slot is removed from the QPR block — the QPR Certificate is the only QPR document. Previously uploaded training files remain in storage but are no longer shown.
+- Files larger than 4 MB are rejected up front with a clear message ("This file is 5.0 MB — the limit is 4 MB") instead of failing with a confusing network error. Applies to certification documents and paper waivers.
+
+### Fixed
+- Entering QPR training and renewal dates right after an upload no longer fails with "Could not save certification". Rapid edits were racing the record being created behind the scenes; saves now run one at a time and the server resolves the collision safely.
+- Typing in a date field no longer gets wiped or locked up while a previous change is still saving.
+- Uploaded certification documents keep their original file name in the display.
+
 ## [0.9.0] - 2026-07-20
 
 ### Added

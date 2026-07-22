@@ -131,9 +131,9 @@ export async function POST(request) {
       school_ids,
     } = body;
 
-    if (!first_name || !last_name) {
+    if (!first_name?.trim() || !last_name?.trim() || !email?.trim() || !phone?.trim()) {
       return NextResponse.json(
-        { error: "First name and last name are required" },
+        { error: "Name, email, and phone are required" },
         { status: 400 }
       );
     }

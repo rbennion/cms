@@ -228,6 +228,21 @@ Export filtered data to CSV from any list view using the Export button.
 
 ## Deployment
 
+### Release Checklist
+
+Every release, in order:
+
+1. **Bump the version** in `package.json` AND the sidebar badge in `components/layout/sidebar.js` — they must match.
+2. **Write the CHANGELOG.md entry** for the new version. The in-app Release Notes page renders this file directly, so write it in plain language for end users. The parser handles headers, sections, and top-level bullets only — no `**bold**`, no links.
+3. **Build locally before pushing**: stop any running dev server first (`next dev` and `next build` share `.next/` and corrupt each other), then run `POSTGRES_URL=<dev url> npm run build`. A clean local build means Vercel's build will pass.
+4. **Commit and push to `main`** — that is the deploy (see below).
+5. **Watch for READY** (`vercel ls`, ~1 minute), then hit the production login page as a pulse check.
+6. **Verify in production**: click through whatever the release touched. File uploads deserve a real test — they exercise blob storage, which local dev can't fully prove.
+
+Deploys are atomic: a failed build (including a failed migration) leaves the previous version live and untouched.
+
+### How Deploys Work
+
 Production runs on Vercel (Hobby plan) with a Neon-hosted Postgres database. Deploying is a git push:
 
 1. Commit to `main` and push to GitHub. There are no feature branches — `main` is production.

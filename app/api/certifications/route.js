@@ -70,9 +70,7 @@ export async function POST(request) {
     // Upsert: one certification checklist per person. Fields left undefined
     // keep their existing values. background_check_passed is derived from the
     // status so the two columns can never disagree.
-    const existing = await get('SELECT * FROM certifications WHERE person_id = ?', [person_id])
-
-    if (existing) {
+    const updateExisting = async (existing) => {
       const status = background_check_status || existing.background_check_status || 'pending'
       await run(
         `UPDATE certifications SET
@@ -96,20 +94,35 @@ export async function POST(request) {
           existing.id
         ]
       )
-      const certification = await attachBgExpiry(await get('SELECT * FROM certifications WHERE id = ?', [existing.id]))
-      return NextResponse.json(certification)
+      return attachBgExpiry(await get('SELECT * FROM certifications WHERE id = ?', [existing.id]))
+    }
+
+    const existing = await get('SELECT * FROM certifications WHERE person_id = ?', [person_id])
+    if (existing) {
+      return NextResponse.json(await updateExisting(existing))
     }
 
     const status = background_check_status || 'pending'
-    const result = await run(
-      `INSERT INTO certifications (person_id, background_check_status, background_check_passed, background_check_date, application_received, qpr_gatekeeper_training, qpr_training_date, qpr_training_renewal_date)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-      [person_id, status, status === 'approved', background_check_date || null, application_received ? 1 : 0, qpr_gatekeeper_training ? 1 : 0, qpr_training_date || null, qpr_training_renewal_date || null]
-    )
-
-    const certification = await attachBgExpiry(await get('SELECT * FROM certifications WHERE id = ?', [result.lastInsertRowid]))
-
-    return NextResponse.json(certification, { status: 201 })
+    try {
+      const result = await run(
+        `INSERT INTO certifications (person_id, background_check_status, background_check_passed, background_check_date, application_received, qpr_gatekeeper_training, qpr_training_date, qpr_training_renewal_date)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+        [person_id, status, status === 'approved', background_check_date || null, application_received ? 1 : 0, qpr_gatekeeper_training ? 1 : 0, qpr_training_date || null, qpr_training_renewal_date || null]
+      )
+      const certification = await attachBgExpiry(await get('SELECT * FROM certifications WHERE id = ?', [result.lastInsertRowid]))
+      return NextResponse.json(certification, { status: 201 })
+    } catch (insertError) {
+      // Unique violation: a concurrent request created the record between our
+      // SELECT and INSERT (e.g. a document upload auto-creating while a field
+      // save fires). Retry as an update instead of failing.
+      if (insertError?.code === '23505') {
+        const created = await get('SELECT * FROM certifications WHERE person_id = ?', [person_id])
+        if (created) {
+          return NextResponse.json(await updateExisting(created))
+        }
+      }
+      throw insertError
+    }
   } catch (error) {
     console.error('Error creating certification:', error)
     return NextResponse.json({ error: 'Failed to create certification' }, { status: 500 })

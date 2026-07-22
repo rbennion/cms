@@ -58,6 +58,16 @@ export function CertificationPanel({ personId, cert, onSaved }) {
     };
   }, [certId, appPath, trainingPath, certificatePath]);
 
+  // Saves run through a queue so rapid edits (blur one field, click the next)
+  // never fire concurrent requests — that race produced duplicate-create
+  // errors in production.
+  const saveQueue = useRef(Promise.resolve());
+  const enqueue = (work) => {
+    const next = saveQueue.current.then(work, work);
+    saveQueue.current = next.catch(() => {});
+    return next;
+  };
+
   const upsert = async (payload) => {
     const res = await fetch("/api/certifications", {
       method: "POST",
@@ -75,63 +85,81 @@ export function CertificationPanel({ personId, cert, onSaved }) {
     return res.json();
   };
 
-  const saveField = async (payload) => {
-    setSaving(true);
-    try {
-      await upsert(payload);
-      onSaved?.();
-    } catch (error) {
-      toast({
-        title: "Could not save certification",
-        description: error.message,
-        variant: "destructive",
-      });
-    } finally {
-      setSaving(false);
-    }
-  };
+  const saveField = (payload) =>
+    enqueue(async () => {
+      setSaving(true);
+      try {
+        await upsert(payload);
+        onSaved?.();
+      } catch (error) {
+        toast({
+          title: "Could not save certification",
+          description: error.message,
+          variant: "destructive",
+        });
+      } finally {
+        setSaving(false);
+      }
+    });
 
   const pickFile = (type) => {
     setUploadType(type);
     fileRef.current?.click();
   };
 
-  const handleFile = async (e) => {
+  const handleFile = (e) => {
     const file = e.target.files[0];
     e.target.value = "";
     if (!file || !uploadType) return;
 
-    try {
-      let id = cert?.id;
-      if (!id) {
-        const created = await upsert({});
-        id = created.id;
-      }
-      const formData = new FormData();
-      formData.append("file", file);
-      const res = await fetch(`/api/certifications/${id}/${uploadType}`, {
-        method: "POST",
-        body: formData,
-      });
-      if (!res.ok) {
-        let message = `Upload failed (HTTP ${res.status})`;
-        try {
-          const body = await res.json();
-          if (body?.error) message = body.error;
-        } catch {}
-        throw new Error(message);
-      }
-      toast({ title: "Document uploaded" });
-      onSaved?.();
-    } catch (error) {
+    // Vercel rejects request bodies over ~4.5 MB by dropping the connection,
+    // which surfaces as a useless "Failed to fetch". Catch it here with a
+    // clear message instead.
+    if (file.size > 4 * 1024 * 1024) {
+      const mb = (file.size / (1024 * 1024)).toFixed(1);
       toast({
-        title: "Upload failed",
-        description: error.message,
+        title: "File too large",
+        description: `This file is ${mb} MB — the limit is 4 MB. Try a smaller scan or a compressed photo.`,
         variant: "destructive",
       });
-    } finally {
       setUploadType(null);
+      return;
     }
+
+    const type = uploadType;
+    return enqueue(async () => {
+      try {
+        let id = cert?.id;
+        if (!id) {
+          const created = await upsert({});
+          id = created.id;
+        }
+        const formData = new FormData();
+        formData.append("file", file);
+        const res = await fetch(`/api/certifications/${id}/${type}`, {
+          method: "POST",
+          body: formData,
+        });
+        if (!res.ok) {
+          let message = `Upload failed (HTTP ${res.status})`;
+          try {
+            const body = await res.json();
+            if (body?.error) message = body.error;
+          } catch {}
+          throw new Error(message);
+        }
+        toast({ title: "Document uploaded" });
+        onSaved?.();
+      } catch (error) {
+        toast({
+          title: "Upload failed",
+          description: error.message,
+          variant: "destructive",
+        });
+      } finally {
+        setUploadType(null);
+      }
+    });
   };
 
   const docLine = (label, type, path) => {
@@ -226,7 +254,6 @@ export function CertificationPanel({ personId, cert, onSaved }) {
             <Checkbox
               id={`cert-app-${personId}`}
               checked={!!cert?.application_received}
-              disabled={saving}
               onCheckedChange={(checked) =>
                 saveField({ application_received: !!checked })
               }
@@ -274,9 +301,7 @@ export function CertificationPanel({ personId, cert, onSaved }) {
               <Input
                 type="date"
                 id={`cert-bg-date-${personId}`}
-                key={`bd-${cert?.background_check_date || ""}`}
                 defaultValue={(cert?.background_check_date || "").slice(0, 10)}
-                disabled={saving}
                 onBlur={(e) => {
                   const value = e.target.value || null;
                   if (value !== ((cert?.background_check_date || "").slice(0, 10) || null)) {
@@ -313,7 +338,6 @@ export function CertificationPanel({ personId, cert, onSaved }) {
             <Checkbox
               id={`cert-qpr-${personId}`}
               checked={!!cert?.qpr_gatekeeper_training}
-              disabled={saving}
               onCheckedChange={(checked) =>
                 saveField({ qpr_gatekeeper_training: !!checked })
               }
@@ -333,9 +357,7 @@ export function CertificationPanel({ personId, cert, onSaved }) {
               <Input
                 type="date"
                 id={`cert-qpr-date-${personId}`}
-                key={`td-${cert?.qpr_training_date || ""}`}
                 defaultValue={(cert?.qpr_training_date || "").slice(0, 10)}
-                disabled={saving}
                 onBlur={(e) => {
                   const value = e.target.value || null;
                   if (value !== ((cert?.qpr_training_date || "").slice(0, 10) || null)) {
@@ -354,9 +376,7 @@ export function CertificationPanel({ personId, cert, onSaved }) {
               <Input
                 type="date"
                 id={`cert-qpr-renewal-${personId}`}
-                key={`rd-${cert?.qpr_training_renewal_date || ""}`}
                 defaultValue={(cert?.qpr_training_renewal_date || "").slice(0, 10)}
-                disabled={saving}
                 onBlur={(e) => {
                   const value = e.target.value || null;
                   if (value !== ((cert?.qpr_training_renewal_date || "").slice(0, 10) || null)) {
@@ -366,7 +386,6 @@ export function CertificationPanel({ personId, cert, onSaved }) {
               />
             </div>
           </div>
-          {docLine("Training document", "training", trainingPath)}
           {docLine("QPR Certificate", "qpr-certificate", certificatePath)}
         </div>
       </div>
