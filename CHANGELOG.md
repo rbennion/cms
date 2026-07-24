@@ -4,6 +4,12 @@ All notable changes to the Fight Club CRM application will be documented in this
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.9.2] - 2026-07-24
+
+### Changed
+- Document uploads now support files up to 10 MB, up from 4 MB. Files upload from your browser directly to secure storage instead of passing through the app server, which is what imposed the old limit. Applies to certification documents and paper waivers.
+- PDF, JPG, and PNG were always accepted formats — large scanned PDFs were being rejected for size, not format. Those now upload normally.
+
 ## [0.9.1] - 2026-07-22
 
 ### Added

@@ -58,7 +58,7 @@ export function Sidebar() {
               </div>
             )}
             <span className="text-lg font-semibold">{appName}</span>
-            <span className="text-xs text-muted-foreground">v0.9.1</span>
+            <span className="text-xs text-muted-foreground">v0.9.2</span>
           </Link>
           <div className="flex justify-center mt-1">
             <Link

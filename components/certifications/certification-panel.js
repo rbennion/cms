@@ -22,6 +22,7 @@ import {
   formatDateOnly,
 } from "@/lib/certifications";
 import { FileText, Upload } from "lucide-react";
+import { MAX_UPLOAD_BYTES, fileTooLargeMessage, uploadDocument } from "@/lib/client-upload";
 
 // The single edit surface for a person's certification checklist. Used inline
 // on the person detail page and inside the sheet on the certifications page.
@@ -112,14 +113,10 @@ export function CertificationPanel({ personId, cert, onSaved }) {
     e.target.value = "";
     if (!file || !uploadType) return;
 
-    // Vercel rejects request bodies over ~4.5 MB by dropping the connection,
-    // which surfaces as a useless "Failed to fetch". Catch it here with a
-    // clear message instead.
-    if (file.size > 4 * 1024 * 1024) {
-      const mb = (file.size / (1024 * 1024)).toFixed(1);
+    if (file.size > MAX_UPLOAD_BYTES) {
       toast({
         title: "File too large",
-        description: `This file is ${mb} MB — the limit is 4 MB. Try a smaller scan or a compressed photo.`,
+        description: fileTooLargeMessage(file),
         variant: "destructive",
       });
       setUploadType(null);
@@ -129,16 +126,19 @@ export function CertificationPanel({ personId, cert, onSaved }) {
     const type = uploadType;
     return enqueue(async () => {
       try {
+        // Upload straight from the browser to storage (no server size limit),
+        // then record the stored path on the certification.
+        const pathname = await uploadDocument(file, "cert-doc");
+
         let id = cert?.id;
         if (!id) {
           const created = await upsert({});
           id = created.id;
         }
-        const formData = new FormData();
-        formData.append("file", file);
         const res = await fetch(`/api/certifications/${id}/${type}`, {
           method: "POST",
-          body: formData,
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ pathname }),
         });
         if (!res.ok) {
           let message = `Upload failed (HTTP ${res.status})`;

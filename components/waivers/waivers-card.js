@@ -16,6 +16,7 @@ import {
 import { FileSignature, Send, RotateCw, FileText, Loader2, Upload } from "lucide-react";
 import { useToast } from "@/components/ui/use-toast";
 import { deriveWaiverStatus } from "@/lib/waivers";
+import { MAX_UPLOAD_BYTES, fileTooLargeMessage, uploadDocument } from "@/lib/client-upload";
 import { WaiverStatusLine, WaiverSteps } from "@/components/waivers/waiver-status";
 
 export function WaiversCard({ personId, defaultEmail }) {
@@ -93,23 +94,24 @@ export function WaiversCard({ personId, defaultEmail }) {
     const file = e.target.files[0];
     e.target.value = "";
     if (!file) return;
-    // Vercel drops request bodies over ~4.5 MB with an unhelpful network
-    // error — catch oversized scans/photos here with a clear message.
-    if (file.size > 4 * 1024 * 1024) {
-      const mb = (file.size / (1024 * 1024)).toFixed(1);
+    if (file.size > MAX_UPLOAD_BYTES) {
       toast({
         title: "File too large",
-        description: `This file is ${mb} MB — the limit is 4 MB. Try a smaller scan or a compressed photo.`,
+        description: fileTooLargeMessage(file),
         variant: "destructive",
       });
       return;
     }
     setUploading(true);
     try {
-      const formData = new FormData();
-      formData.append("person_id", String(personId));
-      formData.append("file", file);
-      const res = await fetch("/api/waivers/paper", { method: "POST", body: formData });
+      // Upload straight from the browser to storage (no server size limit),
+      // then record the stored path as the signed paper waiver.
+      const pathname = await uploadDocument(file, "paper-waiver");
+      const res = await fetch("/api/waivers/paper", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ person_id: personId, pathname }),
+      });
       const data = await res.json();
       if (!res.ok) {
         toast({ title: "Upload failed", description: data.error, variant: "destructive" });
@@ -117,6 +119,8 @@ export function WaiversCard({ personId, defaultEmail }) {
         toast({ title: "Paper waiver recorded" });
         load();
       }
+    } catch (error) {
+      toast({ title: "Upload failed", description: error.message, variant: "destructive" });
     } finally {
       setUploading(false);
     }
