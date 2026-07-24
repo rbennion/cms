@@ -4,6 +4,13 @@ All notable changes to the Fight Club CRM application will be documented in this
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.9.3] - 2026-07-24
+
+### Changed
+- CSV export now respects the filters you have applied. Selecting a View (for example "Donors") and clicking Export now downloads only the records shown in that View, not the entire database. Applies to People, Companies, Schools, and Groups.
+- Groups can now be exported — the Groups page has an Export button.
+- The People export now includes a Role column.
+
 ## [0.9.2] - 2026-07-24
 
 ### Changed

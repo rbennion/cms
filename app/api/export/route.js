@@ -29,18 +29,43 @@ export async function GET(request) {
     let columns = [];
 
     if (entityType === "people") {
+      // Filters must mirror the People list API (app/api/people) exactly so the
+      // export row count matches what the on-screen View shows.
       let query = `
         SELECT p.id, p.first_name, p.last_name, p.email, p.phone,
-               p.title, p.address, p.city, p.state, p.zip
+               p.title, p.address, p.city, p.state, p.zip,
+               (SELECT STRING_AGG(r.name, '; ')
+                FROM person_roles pr
+                JOIN roles r ON pr.role_id = r.id
+                WHERE pr.person_id = p.id) as roles
         FROM people p
         WHERE 1=1
       `;
       const params = [];
 
       if (filters.search) {
-        query += ` AND (p.first_name ILIKE ? OR p.last_name ILIKE ? OR p.email ILIKE ?)`;
+        query += ` AND (p.first_name ILIKE ? OR p.last_name ILIKE ? OR p.email ILIKE ? OR p.phone ILIKE ?)`;
         const searchTerm = `%${filters.search}%`;
-        params.push(searchTerm, searchTerm, searchTerm);
+        params.push(searchTerm, searchTerm, searchTerm, searchTerm);
+      }
+
+      const roleIdArray = Array.isArray(filters.role_ids)
+        ? filters.role_ids.map((id) => String(id).trim()).filter(Boolean)
+        : [];
+      if (roleIdArray.length > 0) {
+        const placeholders = roleIdArray.map(() => "?").join(",");
+        query += ` AND EXISTS (SELECT 1 FROM person_roles pr WHERE pr.person_id = p.id AND pr.role_id IN (${placeholders}))`;
+        params.push(...roleIdArray);
+      }
+
+      if (filters.stage_id) {
+        query += ` AND p.stage_id = ?`;
+        params.push(filters.stage_id);
+      }
+
+      if (filters.school_id) {
+        query += ` AND EXISTS (SELECT 1 FROM person_schools ps WHERE ps.person_id = p.id AND ps.school_id = ?)`;
+        params.push(filters.school_id);
       }
 
       query += " ORDER BY p.last_name, p.first_name";
@@ -78,6 +103,7 @@ export async function GET(request) {
         "email",
         "phone",
         "title",
+        "roles",
         "address",
         "city",
         "state",
@@ -85,6 +111,7 @@ export async function GET(request) {
         "family_members",
       ];
     } else if (entityType === "companies") {
+      // Mirror the Companies list API (app/api/companies) filters.
       let query = `
         SELECT id, name, address, city, state, zip, website, is_donor
         FROM companies
@@ -95,6 +122,11 @@ export async function GET(request) {
       if (filters.search) {
         query += ` AND name ILIKE ?`;
         params.push(`%${filters.search}%`);
+      }
+
+      if (filters.is_donor !== undefined && filters.is_donor !== "") {
+        query += ` AND is_donor = ?`;
+        params.push(filters.is_donor === "true" || filters.is_donor === true ? 1 : 0);
       }
 
       query += " ORDER BY name";
@@ -111,6 +143,7 @@ export async function GET(request) {
         "is_donor",
       ];
     } else if (entityType === "schools") {
+      // Mirror the Schools list API (app/api/schools) filters.
       let query = `
         SELECT id, name, address, city, state, zip
         FROM schools
@@ -119,8 +152,9 @@ export async function GET(request) {
       const params = [];
 
       if (filters.search) {
-        query += ` AND name ILIKE ?`;
-        params.push(`%${filters.search}%`);
+        query += ` AND (name ILIKE ? OR city ILIKE ?)`;
+        const searchTerm = `%${filters.search}%`;
+        params.push(searchTerm, searchTerm);
       }
 
       query += " ORDER BY name";
@@ -175,6 +209,7 @@ export async function GET(request) {
         "note",
       ];
     } else if (entityType === "groups") {
+      // Mirror the Groups list API (app/api/groups) filters.
       let query = `
         SELECT g.id, g.name, s.name as school_name, g.gender, g.year, g.status,
                pl.first_name as leader_first_name, pl.last_name as leader_last_name,
@@ -186,17 +221,6 @@ export async function GET(request) {
       `;
       const params = [];
 
-      if (filters.search) {
-        query += ` AND (g.name ILIKE ? OR s.name ILIKE ?)`;
-        const searchTerm = `%${filters.search}%`;
-        params.push(searchTerm, searchTerm);
-      }
-
-      if (filters.status) {
-        query += ` AND g.status = ?`;
-        params.push(filters.status);
-      }
-
       if (filters.school_id) {
         query += ` AND g.school_id = ?`;
         params.push(filters.school_id);
@@ -205,6 +229,28 @@ export async function GET(request) {
       if (filters.gender) {
         query += ` AND g.gender = ?`;
         params.push(filters.gender);
+      }
+
+      if (filters.status) {
+        query += ` AND g.status = ?`;
+        params.push(filters.status);
+      }
+
+      if (filters.year) {
+        query += ` AND g.year = ?`;
+        params.push(filters.year);
+      }
+
+      if (filters.search) {
+        query += ` AND (
+          g.name ILIKE ? OR
+          s.name ILIKE ? OR
+          pl.first_name ILIKE ? OR
+          pl.last_name ILIKE ? OR
+          CONCAT(pl.first_name, ' ', pl.last_name) ILIKE ?
+        )`;
+        const searchTerm = `%${filters.search}%`;
+        params.push(searchTerm, searchTerm, searchTerm, searchTerm, searchTerm);
       }
 
       query += " ORDER BY s.name, g.name";

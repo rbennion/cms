@@ -7,6 +7,7 @@ import { Header } from "@/components/layout/header";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { SearchInput } from "@/components/shared/search-input";
+import { ExportButton } from "@/components/shared/export-button";
 import { ConfirmDialog } from "@/components/shared/confirm-dialog";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
@@ -158,6 +159,7 @@ function GroupsPageContent() {
     <div className="flex flex-col">
       <Header title="Groups" description="Manage groups">
         <div className="flex gap-2">
+          <ExportButton entityType="groups" filters={filters} />
           <Button asChild>
             <Link href="/groups/new">
               <Plus className="mr-2 h-4 w-4" />
