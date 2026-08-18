@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
@@ -42,6 +43,10 @@ export function PersonForm({ person, isEdit = false }) {
     stage_id: person?.stage_id || null,
     role_ids: person?.roles?.map((r) => r.id) || [],
   });
+
+  // A note needs a person to hang off, so on create it is captured here and
+  // written once the person exists. On edit the detail page owns notes.
+  const [firstNote, setFirstNote] = useState("");
 
   const [selectedCompanies, setSelectedCompanies] = useState(
     person?.companies || []
@@ -101,6 +106,30 @@ export function PersonForm({ person, isEdit = false }) {
       }
 
       const data = await res.json();
+
+      if (!isEdit && firstNote.trim()) {
+        const noteRes = await fetch("/api/notes", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            content: firstNote.trim(),
+            entity_type: "person",
+            entity_id: data.id,
+          }),
+        });
+        // The person saved either way — say so rather than failing the whole
+        // create and losing everything they typed.
+        if (!noteRes.ok) {
+          toast({
+            title: "Person created, but the note was not saved",
+            description: "Add it from their record.",
+            variant: "destructive",
+          });
+          router.push(`/people/${data.id}`);
+          return;
+        }
+      }
+
       toast({
         title: isEdit
           ? "Person updated successfully"
@@ -288,6 +317,23 @@ export function PersonForm({ person, isEdit = false }) {
           />
         </CardContent>
       </Card>
+
+      {!isEdit && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Notes</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <Textarea
+              id="first_note"
+              value={firstNote}
+              onChange={(e) => setFirstNote(e.target.value)}
+              placeholder="Anything worth recording about this person..."
+              rows={4}
+            />
+          </CardContent>
+        </Card>
+      )}
 
       <FormActions
         loading={loading}

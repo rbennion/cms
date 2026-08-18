@@ -4,6 +4,22 @@ All notable changes to the Fight Club CRM application will be documented in this
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.9.4] - 2026-08-18
+
+### Added
+- Notes can now be entered while creating a person, instead of having to save the record and go back in.
+
+### Changed
+- Document uploads now accept files up to 100 MB, up from 10 MB. Large files are sent in chunks, so a dropped connection resumes instead of starting the whole upload over. Applies to certification documents and paper waivers.
+
+### Fixed
+- Nothing in the Certification Status section could be saved in production. Every save — Application Received, Background Check status and date, QPR Training Complete and its dates — is written by a single database statement, and that statement referenced a column the production database never had, so all of it failed with "Could not save certification". Reading a record still worked, which is why the section looked fine until you touched it. Document uploads were unaffected; they use a different statement. Migration 010 restores the missing columns.
+- Dates no longer land a day early. Picking July 7th on a calendar recorded and displayed July 6th for anyone in a US timezone, because the server stored the day as an instant in UTC rather than as a calendar date. Affects donation dates, note dates, and the certification date fields.
+- Certification checkboxes and the background check dropdown now respond the moment you click them. Previously they did not move until the save came back from the server, which on a slow connection looked like a dead control — clicking again cancelled out the first click, so the setting appeared stuck. The control now updates immediately and ignores further clicks until the save finishes. If a save fails, the control returns to its saved state and shows the reason. Affects Application Received, QPR Training Complete, and Background Check status.
+
+### Operations
+- Migration 010 adds the two missing certification columns (QPR training date, and the background check document path). Both are defined in the baseline schema but were never created in production: the baseline only creates the table if it does not already exist, and production's certifications table predates it, so the baseline was a no-op there. Additive only — it adds the columns where absent and does nothing where they already exist. Applies automatically during the Vercel build.
+
 ## [0.9.3] - 2026-07-24
 
 ### Changed

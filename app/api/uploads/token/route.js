@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { handleUpload } from "@vercel/blob/client";
 import { requireAuth } from "@/lib/api-auth";
+import { MAX_UPLOAD_BYTES } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
 
@@ -8,7 +9,6 @@ export const dynamic = "force-dynamic";
 // blob storage. Direct uploads bypass Vercel's ~4.5 MB request body limit,
 // which is what capped uploads at 4 MB before. The token constrains content
 // types, size, and the path prefix the client may write to.
-const MAX_UPLOAD_BYTES = 10 * 1024 * 1024;
 
 const KINDS = {
   "cert-doc": {

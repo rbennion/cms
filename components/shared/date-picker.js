@@ -3,7 +3,7 @@
 import * as React from "react"
 import { format } from "date-fns"
 import { Calendar as CalendarIcon } from "lucide-react"
-import { cn } from "@/lib/utils"
+import { cn, parseDateValue } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { Calendar } from "@/components/ui/calendar"
 import {
@@ -26,13 +26,13 @@ export function DatePicker({ date, onDateChange, placeholder = "Pick a date" }) 
           )}
         >
           <CalendarIcon className="mr-2 h-4 w-4" />
-          {date ? format(new Date(date), "PPP") : <span>{placeholder}</span>}
+          {date ? format(parseDateValue(date), "PPP") : <span>{placeholder}</span>}
         </Button>
       </PopoverTrigger>
       <PopoverContent className="w-auto p-0" align="start">
         <Calendar
           mode="single"
-          selected={date ? new Date(date) : undefined}
+          selected={date ? parseDateValue(date) : undefined}
           onSelect={(newDate) => {
             onDateChange(newDate ? format(newDate, "yyyy-MM-dd") : null)
             setOpen(false)

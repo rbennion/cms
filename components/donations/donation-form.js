@@ -15,6 +15,7 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { DatePicker } from '@/components/shared/date-picker'
+import { todayDateValue } from '@/lib/utils'
 import { useToast } from '@/components/ui/use-toast'
 
 export function DonationForm({ donation, isEdit = false }) {
@@ -33,7 +34,7 @@ export function DonationForm({ donation, isEdit = false }) {
 
   const [formData, setFormData] = useState({
     amount: donation?.amount || '',
-    date: donation?.date || new Date().toISOString().split('T')[0],
+    date: donation?.date || todayDateValue(),
     note: donation?.note || '',
     person_id: donation?.person_id || searchParams.get('person_id') || '',
     company_id: donation?.company_id || searchParams.get('company_id') || '',

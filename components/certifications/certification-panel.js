@@ -35,7 +35,16 @@ export function CertificationPanel({ personId, cert, onSaved }) {
   const [documents, setDocuments] = useState({});
   const fileRef = useRef(null);
 
-  const status = deriveCertStatus(cert);
+  // Fields with a save in flight. Rendering `cert` alone means a control does
+  // not move until the round trip finishes — on a slow connection that reads
+  // as a dead control, so the user clicks again and the two clicks cancel out.
+  // Layering the in-flight values over `cert` makes the change land instantly;
+  // the entry is dropped once the refetched record carries it (or on failure,
+  // which snaps the control back to what the server actually holds).
+  const [pending, setPending] = useState({});
+  const view = { ...cert, ...pending };
+
+  const status = deriveCertStatus(view);
 
   const certId = cert?.id;
   const appPath = cert?.application_attachment_path;
@@ -89,9 +98,13 @@ export function CertificationPanel({ personId, cert, onSaved }) {
   const saveField = (payload) =>
     enqueue(async () => {
       setSaving(true);
+      setPending((prev) => ({ ...prev, ...payload }));
       try {
         await upsert(payload);
-        onSaved?.();
+        // Wait for the caller's refetch so `cert` already carries the new
+        // value before the optimistic entry is dropped — otherwise the control
+        // flickers back to its old state for a frame.
+        await onSaved?.();
       } catch (error) {
         toast({
           title: "Could not save certification",
@@ -99,6 +112,11 @@ export function CertificationPanel({ personId, cert, onSaved }) {
           variant: "destructive",
         });
       } finally {
+        setPending((prev) => {
+          const next = { ...prev };
+          for (const key of Object.keys(payload)) delete next[key];
+          return next;
+        });
         setSaving(false);
       }
     });
@@ -253,7 +271,8 @@ export function CertificationPanel({ personId, cert, onSaved }) {
           <div className="flex items-center space-x-2">
             <Checkbox
               id={`cert-app-${personId}`}
-              checked={!!cert?.application_received}
+              checked={!!view.application_received}
+              disabled={saving}
               onCheckedChange={(checked) =>
                 saveField({ application_received: !!checked })
               }
@@ -269,7 +288,7 @@ export function CertificationPanel({ personId, cert, onSaved }) {
           <div className="flex items-center justify-between">
             <span>Background Check</span>
             <Select
-              value={cert?.background_check_status || "pending"}
+              value={view.background_check_status || "pending"}
               disabled={saving}
               onValueChange={(value) =>
                 saveField({ background_check_status: value })
@@ -284,7 +303,7 @@ export function CertificationPanel({ personId, cert, onSaved }) {
                     {o.label}
                   </SelectItem>
                 ))}
-                {cert?.background_check_status === "expired" && (
+                {view.background_check_status === "expired" && (
                   <SelectItem value="expired">Expired</SelectItem>
                 )}
               </SelectContent>
@@ -304,27 +323,27 @@ export function CertificationPanel({ personId, cert, onSaved }) {
                 defaultValue={(cert?.background_check_date || "").slice(0, 10)}
                 onBlur={(e) => {
                   const value = e.target.value || null;
-                  if (value !== ((cert?.background_check_date || "").slice(0, 10) || null)) {
+                  if (value !== ((view.background_check_date || "").slice(0, 10) || null)) {
                     saveField({ background_check_date: value });
                   }
                 }}
               />
             </div>
             <div className="text-sm pb-2">
-              {cert?.background_check_status === "approved" &&
-                cert?.background_check_expires_at &&
-                (bgCheckExpired(cert) ? (
+              {view.background_check_status === "approved" &&
+                view.background_check_expires_at &&
+                (bgCheckExpired(view) ? (
                   <span className="text-destructive font-medium">
-                    Expired {formatDateOnly(cert.background_check_expires_at)} — needs a new
+                    Expired {formatDateOnly(view.background_check_expires_at)} — needs a new
                     check
                   </span>
                 ) : (
                   <span className="text-muted-foreground">
-                    Valid until {formatDateOnly(cert.background_check_expires_at)}
+                    Valid until {formatDateOnly(view.background_check_expires_at)}
                   </span>
                 ))}
-              {cert?.background_check_status === "approved" &&
-                !cert?.background_check_date && (
+              {view.background_check_status === "approved" &&
+                !view.background_check_date && (
                   <span className="text-muted-foreground italic">
                     Enter the check date to track renewal
                   </span>
@@ -337,7 +356,8 @@ export function CertificationPanel({ personId, cert, onSaved }) {
           <div className="flex items-center space-x-2">
             <Checkbox
               id={`cert-qpr-${personId}`}
-              checked={!!cert?.qpr_gatekeeper_training}
+              checked={!!view.qpr_gatekeeper_training}
+              disabled={saving}
               onCheckedChange={(checked) =>
                 saveField({ qpr_gatekeeper_training: !!checked })
               }
@@ -360,7 +380,7 @@ export function CertificationPanel({ personId, cert, onSaved }) {
                 defaultValue={(cert?.qpr_training_date || "").slice(0, 10)}
                 onBlur={(e) => {
                   const value = e.target.value || null;
-                  if (value !== ((cert?.qpr_training_date || "").slice(0, 10) || null)) {
+                  if (value !== ((view.qpr_training_date || "").slice(0, 10) || null)) {
                     saveField({ qpr_training_date: value });
                   }
                 }}
@@ -379,7 +399,7 @@ export function CertificationPanel({ personId, cert, onSaved }) {
                 defaultValue={(cert?.qpr_training_renewal_date || "").slice(0, 10)}
                 onBlur={(e) => {
                   const value = e.target.value || null;
-                  if (value !== ((cert?.qpr_training_renewal_date || "").slice(0, 10) || null)) {
+                  if (value !== ((view.qpr_training_renewal_date || "").slice(0, 10) || null)) {
                     saveField({ qpr_training_renewal_date: value });
                   }
                 }}
