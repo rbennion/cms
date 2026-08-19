@@ -1,5 +1,7 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  // Emits a self-contained server bundle for the container image.
+  output: 'standalone',
   experimental: {
     serverComponentsExternalPackages: ["pdf-lib"],
   },

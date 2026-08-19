@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
-import { put, del, head, get as blobGet } from '@vercel/blob'
+import { put, del, head, get as blobGet } from '@/lib/storage'
+import { verifyUploaded } from '@/lib/uploads'
 import { get, run } from '@/lib/db'
 import { generateUniqueFilename } from '@/lib/utils'
 import { requireAuth } from '@/lib/api-auth'
@@ -28,7 +29,7 @@ export async function POST(request, { params }) {
         return NextResponse.json({ error: 'Invalid document path' }, { status: 400 })
       }
       try {
-        await head(pathname)
+        await verifyUploaded(pathname)
       } catch {
         return NextResponse.json({ error: 'Uploaded file not found in storage' }, { status: 400 })
       }

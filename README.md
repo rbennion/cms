@@ -101,6 +101,8 @@ npm run dev          # Start development server (localhost:3000)
 npm run build        # Create production build
 npm run start        # Start production server
 npm run lint         # Run ESLint
+npm test              # Run the test suite (see tests/README.md)
+npm run test:e2e      # Run the browser tests (see e2e/README.md)
 npm run init-db      # Initialize/reset database schema
 npm run seed         # Seed sample data
 npm run import-data  # Import data from CSV files

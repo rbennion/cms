@@ -44,3 +44,10 @@ database.sqlite
 
 # Reference docs (not tracked)
 /docs
+.env.test
+.env.storage.test
+.env.e2e
+
+# Playwright run artefacts
+test-results/
+playwright-report/

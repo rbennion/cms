@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { get, run } from "@/lib/db";
 import { renderSignedWaiver } from "@/lib/waiver-pdf";
-import { get as blobGet } from "@vercel/blob";
+import { get as blobGet } from "@/lib/storage";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;

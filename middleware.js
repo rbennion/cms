@@ -11,6 +11,9 @@ const publicRoutes = [
   "/api/settings/logo",
   "/sign",
   "/api/sign",
+  // Reachable without signing in so monitoring can check it. It answers only
+  // "working" or "not working" and reveals nothing about the system.
+  "/api/health",
 ];
 
 // Routes that require admin access

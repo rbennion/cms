@@ -322,7 +322,18 @@ export async function DELETE(request, { params }) {
       return NextResponse.json({ error: "Person not found" }, { status: 404 });
     }
 
-    await run("DELETE FROM people WHERE id = ?", [id]);
+    // Notes hang off a record by type and id rather than by a database
+    // relationship, so nothing removes them automatically. Deleting both in one
+    // statement keeps a person's notes from outliving the person — they can
+    // hold personal detail, including about minors.
+    await run(
+      `WITH removed AS (
+         DELETE FROM people WHERE id = ? RETURNING id
+       )
+       DELETE FROM notes
+       WHERE entity_type = 'person' AND entity_id IN (SELECT id FROM removed)`,
+      [id]
+    );
 
     return NextResponse.json({ success: true });
   } catch (error) {

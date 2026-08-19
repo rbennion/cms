@@ -97,7 +97,16 @@ export async function DELETE(request, { params }) {
       return NextResponse.json({ error: 'Company not found' }, { status: 404 })
     }
 
-    await run('DELETE FROM companies WHERE id = ?', [id])
+    // Same as people: notes are attached by type and id, so they have to be
+    // removed alongside the record or they are left orphaned.
+    await run(
+      `WITH removed AS (
+         DELETE FROM companies WHERE id = ? RETURNING id
+       )
+       DELETE FROM notes
+       WHERE entity_type = 'company' AND entity_id IN (SELECT id FROM removed)`,
+      [id]
+    )
 
     return NextResponse.json({ success: true })
   } catch (error) {

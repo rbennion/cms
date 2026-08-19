@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { head } from '@vercel/blob'
+import { head } from '@/lib/storage'
 import { get } from '@/lib/db'
 import { parseAttachmentName } from '@/lib/utils'
 import { requireAuth } from '@/lib/api-auth'

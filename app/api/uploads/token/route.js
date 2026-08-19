@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { handleUpload } from "@vercel/blob/client";
 import { requireAuth } from "@/lib/api-auth";
 import { MAX_UPLOAD_BYTES } from "@/lib/utils";
+import { uploadKind } from "@/lib/uploads";
 
 export const dynamic = "force-dynamic";
 
@@ -10,22 +11,6 @@ export const dynamic = "force-dynamic";
 // which is what capped uploads at 4 MB before. The token constrains content
 // types, size, and the path prefix the client may write to.
 
-const KINDS = {
-  "cert-doc": {
-    prefix: "documents/",
-    allowedContentTypes: [
-      "application/pdf",
-      "image/jpeg",
-      "image/png",
-      "application/msword",
-      "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-    ],
-  },
-  "paper-waiver": {
-    prefix: "waivers/paper-",
-    allowedContentTypes: ["application/pdf", "image/jpeg", "image/png"],
-  },
-};
 
 export async function POST(request) {
   const { error } = await requireAuth();
@@ -44,7 +29,7 @@ export async function POST(request) {
         } catch {
           kind = null;
         }
-        const config = KINDS[kind];
+        const config = uploadKind(kind);
         if (!config) {
           throw new Error("Unknown upload kind");
         }

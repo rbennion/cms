@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
-import { put, head } from "@vercel/blob";
+import { put, head } from "@/lib/storage";
+import { verifyUploaded } from "@/lib/uploads";
 import { get, run } from "@/lib/db";
 import { requireAdmin } from "@/lib/api-auth";
 import { generateUniqueFilename } from "@/lib/utils";
@@ -33,7 +34,7 @@ export async function POST(request) {
         return NextResponse.json({ error: "Person not found" }, { status: 404 });
       }
       try {
-        await head(pathname);
+        await verifyUploaded(pathname);
       } catch {
         return NextResponse.json({ error: "Uploaded file not found in storage" }, { status: 400 });
       }

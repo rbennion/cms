@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { get, run } from "@/lib/db";
 import crypto from "crypto";
+import { sendPasswordReset } from "@/lib/email";
 
 export async function POST(request) {
   try {
@@ -40,16 +41,20 @@ export async function POST(request) {
       [user.id, token, expiresAt.toISOString()]
     );
 
-    // In production, send email here
-    // For development, return the link directly
     const resetLink = `${process.env.NEXTAUTH_URL || "http://localhost:3000"}/reset-password?token=${token}`;
+
+    // A failure to send must not tell the caller whether the address exists, and
+    // must not lose the token either — it is already stored, so the user can be
+    // sent a fresh link. Log it and answer the same way regardless.
+    try {
+      await sendPasswordReset({ to: user.email, name: user.name, resetUrl: resetLink });
+    } catch (sendError) {
+      console.error("Failed to send password reset email:", sendError);
+    }
 
     return NextResponse.json({
       success: true,
-      message: "Reset link generated",
-      // Only include resetLink in development
-      resetLink:
-        process.env.NODE_ENV !== "production" ? resetLink : undefined,
+      message: "If an account exists, a reset link will be sent",
     });
   } catch (error) {
     console.error("Forgot password error:", error);
