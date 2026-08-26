@@ -8,6 +8,13 @@ import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { CheckCircle2, AlertCircle, Loader2 } from "lucide-react";
+import {
+  WAIVER_TITLE,
+  WAIVER_SUBTITLE,
+  WAIVER_SECTIONS,
+  PARTICIPANT_NAME_LABEL,
+  SIGNER_NAME_LABEL,
+} from "@/lib/waiver-text";
 
 const SignaturePad = dynamic(
   () => import("@/components/waivers/signature-pad").then((m) => m.SignaturePad),
@@ -134,80 +141,41 @@ export default function SignWaiverPage({ params }) {
     <div className="mx-auto max-w-3xl px-4 py-8">
       <form onSubmit={handleSubmit} className="space-y-6">
         <div className="text-center">
-          <h1 className="text-2xl font-bold">Fight Club Parental Waiver</h1>
-          <p className="text-muted-foreground">Liability Waiver &amp; Photo / Name Release</p>
+          <h1 className="text-2xl font-bold">{WAIVER_TITLE}</h1>
+          <p className="text-muted-foreground">{WAIVER_SUBTITLE}</p>
         </div>
 
-        <Card>
-          <CardHeader>
-            <CardTitle>Waiver and Release of Liability</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4 text-sm leading-relaxed">
-            <p>
-              I, the undersigned parent or legal guardian of the Fight Club participant below, understand that
-              participation in Fight Club events and associated activities involves physical activity and inherent
-              risks, including but not limited to the risk of injury.
-            </p>
-            <p>
-              I voluntarily assume all risks associated with my child&apos;s participation in Fight Club events and agree to
-              release, waive, and hold harmless Fight Club employees, agents, and any other affiliated individuals or
-              entities from any and all claims, liability, demands, actions, or causes of action arising out of any
-              injury, loss, or damage that may occur during or as a result of participation in Fight Club.
-            </p>
-            <p>
-              I certify that the child listed below is physically fit and able to participate, and I understand that
-              medical insurance is my responsibility.
-            </p>
+        {WAIVER_SECTIONS.map((section) => {
+          const value = section.key === "liability" ? liabilityChoice : photoChoice;
+          const onChange = section.key === "liability" ? setLiabilityChoice : setPhotoChoice;
+          return (
+            <Card key={section.key}>
+              <CardHeader>
+                <CardTitle>{section.heading}</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4 text-sm leading-relaxed">
+                {section.paragraphs.map((text, i) => (
+                  <p key={i}>{text}</p>
+                ))}
 
-            <RadioGroup value={liabilityChoice} onValueChange={setLiabilityChoice} className="pt-2">
-              <div className="flex items-start gap-2">
-                <RadioGroupItem id="liability-release" value="release" className="mt-1" />
-                <Label htmlFor="liability-release" className="font-normal leading-relaxed">
-                  <strong>I release</strong> Fight Club from liability for damages resulting from participation in Club events.
-                </Label>
-              </div>
-              <div className="flex items-start gap-2">
-                <RadioGroupItem id="liability-no" value="do_not_release" className="mt-1" />
-                <Label htmlFor="liability-no" className="font-normal leading-relaxed">
-                  <strong>I DO NOT release</strong> Fight Club from liability for damages resulting from participation in Club events.
-                </Label>
-              </div>
-            </RadioGroup>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>Photo / Name Release</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4 text-sm leading-relaxed">
-            <p>
-              I grant permission to Fight Club employees, agents, and affiliated media to use photographs, video
-              recordings, or other images of my child taken during Fight Club events for promotional, marketing, social
-              media, and/or other news purposes. I also grant permission to Fight Club to use my child&apos;s name in
-              promotional, marketing, social media, and/or news purposes.
-            </p>
-            <p>
-              I understand that my child&apos;s name or images may be used without further notice, compensation, or approval,
-              and may appear in printed materials, online, or other media formats.
-            </p>
-
-            <RadioGroup value={photoChoice} onValueChange={setPhotoChoice} className="pt-2">
-              <div className="flex items-start gap-2">
-                <RadioGroupItem id="photo-allow" value="allow" className="mt-1" />
-                <Label htmlFor="photo-allow" className="font-normal leading-relaxed">
-                  <strong>I give permission</strong> to Fight Club to use both my child&apos;s photo and name.
-                </Label>
-              </div>
-              <div className="flex items-start gap-2">
-                <RadioGroupItem id="photo-no" value="do_not_allow" className="mt-1" />
-                <Label htmlFor="photo-no" className="font-normal leading-relaxed">
-                  <strong>I DO NOT give permission</strong> to Fight Club to use my child&apos;s photo or name.
-                </Label>
-              </div>
-            </RadioGroup>
-          </CardContent>
-        </Card>
+                <RadioGroup value={value} onValueChange={onChange} className="pt-2">
+                  {section.choices.map((choice) => {
+                    const id = `${section.key}-${choice.value}`;
+                    return (
+                      <div key={choice.value} className="flex items-start gap-2">
+                        <RadioGroupItem id={id} value={choice.value} className="mt-1" />
+                        <Label htmlFor={id} className="font-normal leading-relaxed">
+                          <strong>{choice.emphasis}</strong>
+                          {choice.rest}
+                        </Label>
+                      </div>
+                    );
+                  })}
+                </RadioGroup>
+              </CardContent>
+            </Card>
+          );
+        })}
 
         <Card>
           <CardHeader>
@@ -215,16 +183,16 @@ export default function SignWaiverPage({ params }) {
           </CardHeader>
           <CardContent className="space-y-4">
             <div>
-              <Label htmlFor="participant_name">Participant Name</Label>
+              <Label htmlFor="participant_name">{PARTICIPANT_NAME_LABEL}</Label>
               <Input
                 id="participant_name"
                 value={participantName}
                 onChange={(e) => setParticipantName(e.target.value)}
-                placeholder="Child's full name"
+                placeholder="Participant's full name"
               />
             </div>
             <div>
-              <Label htmlFor="signer_name">Parent / Guardian Name</Label>
+              <Label htmlFor="signer_name">{SIGNER_NAME_LABEL}</Label>
               <Input
                 id="signer_name"
                 value={signerName}
