@@ -13,7 +13,7 @@ export function WaiverSteps({ waiver }) {
     );
   }
   const steps = [
-    { label: "Sent", done: true },
+    { label: waiver.source === "in_person" ? "Started" : "Sent", done: true },
     { label: "Signed", done: waiver.status === "signed" },
     { label: "Document", done: !!waiver.signed_pdf_path },
   ];
@@ -47,7 +47,9 @@ export function WaiverStatusLine({ waiver }) {
     <div className="space-y-1">
       <div className="flex items-center gap-2 flex-wrap">
         <Badge variant={status.variant}>{status.label}</Badge>
-        <span className="text-sm font-medium">{waiver.sent_to_email}</span>
+        <span className="text-sm font-medium">
+          {waiver.source === "in_person" ? "In person" : waiver.sent_to_email}
+        </span>
       </div>
       <div className="text-sm text-muted-foreground">{status.sentence}</div>
     </div>

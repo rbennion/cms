@@ -1,6 +1,6 @@
 {
   "name": "fight-club-crm",
-  "version": "0.9.4",
+  "version": "0.9.5",
   "private": true,
   "scripts": {
     "dev": "next dev",
@@ -49,6 +49,7 @@
     "nodemailer": "^7.0.13",
     "pdf-lib": "^1.17.1",
     "pg": "^8.20.0",
+    "qrcode": "^1.5.4",
     "react": "^18",
     "react-day-picker": "^8.10.1",
     "react-dom": "^18",

@@ -52,6 +52,7 @@ import {
 } from "lucide-react";
 import { CertificationPanel } from "@/components/certifications/certification-panel";
 import { WaiversCard } from "@/components/waivers/waivers-card";
+import { RELATIONSHIPS, relationshipLabel } from "@/lib/family";
 
 export default function PersonDetailPage() {
   const params = useParams();
@@ -84,6 +85,7 @@ export default function PersonDetailPage() {
   const [showRoleEdit, setShowRoleEdit] = useState(false);
   const [showStageEdit, setShowStageEdit] = useState(false);
   const [showFamilyAdd, setShowFamilyAdd] = useState(false);
+  const [familyRelationship, setFamilyRelationship] = useState("");
   const [showNewCompanyDialog, setShowNewCompanyDialog] = useState(false);
   const [newCompanyData, setNewCompanyData] = useState({
     name: "",
@@ -384,17 +386,18 @@ export default function PersonDetailPage() {
 
   const handleAddFamilyMember = async (familyMember) => {
     try {
-      const currentFamilyIds = person.family_members?.map((f) => f.id) || [];
-      const res = await fetch(`/api/people/${params.id}`, {
-        method: "PUT",
+      const res = await fetch(`/api/people/${params.id}/family`, {
+        method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          family_member_ids: [...currentFamilyIds, familyMember.id],
+          related_person_id: familyMember.id,
+          relationship: familyRelationship || null,
         }),
       });
       if (!res.ok) throw new Error("Failed to add family member");
       toast({ title: "Family member added successfully" });
       setShowFamilyAdd(false);
+      setFamilyRelationship("");
       fetchPerson();
     } catch (error) {
       toast({
@@ -465,14 +468,10 @@ export default function PersonDetailPage() {
 
   const handleRemoveFamilyMember = async (memberId) => {
     try {
-      const currentFamilyIds = person.family_members?.map((f) => f.id) || [];
-      const res = await fetch(`/api/people/${params.id}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          family_member_ids: currentFamilyIds.filter((id) => id !== memberId),
-        }),
-      });
+      const res = await fetch(
+        `/api/people/${params.id}/family?related_person_id=${memberId}`,
+        { method: "DELETE" }
+      );
       if (!res.ok) throw new Error("Failed to remove family member");
       toast({ title: "Family member removed successfully" });
       fetchPerson();
@@ -1113,6 +1112,21 @@ export default function PersonDetailPage() {
                       Search and select family member
                     </Label>
                     <div className="flex gap-2">
+                      <Select
+                        value={familyRelationship}
+                        onValueChange={setFamilyRelationship}
+                      >
+                        <SelectTrigger className="w-32 shrink-0">
+                          <SelectValue placeholder="Related" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {RELATIONSHIPS.map((r) => (
+                            <SelectItem key={r.value} value={r.value}>
+                              {r.label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
                       <MultiSelectSearch
                         options={allPeople.filter(
                           (p) =>
@@ -1132,7 +1146,10 @@ export default function PersonDetailPage() {
                       <Button
                         size="sm"
                         variant="ghost"
-                        onClick={() => setShowFamilyAdd(false)}
+                        onClick={() => {
+                          setShowFamilyAdd(false);
+                          setFamilyRelationship("");
+                        }}
                       >
                         <X className="h-4 w-4" />
                       </Button>
@@ -1157,6 +1174,11 @@ export default function PersonDetailPage() {
                           >
                             {member.first_name} {member.last_name}
                           </Link>
+                          {relationshipLabel(member.relationship) && (
+                            <Badge variant="secondary" className="ml-2">
+                              {relationshipLabel(member.relationship)}
+                            </Badge>
+                          )}
                           {member.email && (
                             <p className="text-sm text-muted-foreground">
                               {member.email}

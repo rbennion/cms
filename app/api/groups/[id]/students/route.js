@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server'
 import { all, get, run } from '@/lib/db'
 import { requireAuth } from '@/lib/api-auth'
+import { linkFamily } from '@/lib/family'
+import { validateNewPerson, insertPerson } from '@/lib/people-server'
 
 export const dynamic = 'force-dynamic'
 
@@ -38,15 +40,35 @@ export async function POST(request, { params }) {
 
     const { id } = await params
     const body = await request.json()
-    const { person_id } = body
+    const { new_person, parent_ids = [] } = body
+    let { person_id } = body
 
-    if (!person_id) {
+    if (!person_id && !new_person) {
       return NextResponse.json({ error: 'person_id is required' }, { status: 400 })
     }
 
     const group = await get('SELECT id FROM groups WHERE id = ?', [id])
     if (!group) {
       return NextResponse.json({ error: 'Group not found' }, { status: 404 })
+    }
+
+    // Create-and-add: a brand new person, joined to this group and tied to
+    // the parents chosen from the group page.
+    if (!person_id) {
+      const invalid = validateNewPerson(new_person)
+      if (invalid) {
+        return NextResponse.json({ error: invalid }, { status: 400 })
+      }
+      for (const otherId of parent_ids) {
+        const exists = await get('SELECT id FROM people WHERE id = ?', [otherId])
+        if (!exists) {
+          return NextResponse.json({ error: 'Parent not found' }, { status: 404 })
+        }
+      }
+      person_id = await insertPerson(new_person)
+      for (const otherId of parent_ids) {
+        await linkFamily(run, get, person_id, otherId, 'parent')
+      }
     }
 
     const person = await get('SELECT id FROM people WHERE id = ?', [person_id])
@@ -67,7 +89,7 @@ export async function POST(request, { params }) {
       [id, person_id]
     )
 
-    return NextResponse.json({ success: true }, { status: 201 })
+    return NextResponse.json({ success: true, person_id }, { status: 201 })
   } catch (error) {
     console.error('Error adding group student:', error)
     return NextResponse.json({ error: 'Failed to add student' }, { status: 500 })

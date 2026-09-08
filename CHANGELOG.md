@@ -4,6 +4,16 @@ All notable changes to the Fight Club CRM application will be documented in this
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.9.5] - 2026-09-08
+
+### Added
+- Waivers can be signed on the spot. A new "Sign in Person" button on the person's Waivers card opens a QR code the parent scans with their phone, or a link to open the signing page on the staff device. No email is sent. The card updates itself the moment the parent signs, and the signed PDF is available right away. The link is good for 24 hours; if it lapses, "Show signing link" starts a fresh one.
+- New students and parents can be created straight from a Group. The Add panel on the Students and Parents cards now has a "New student" / "New parent" option: enter name, email and phone, pick the parents or students they belong with, and one save creates the person, adds them to the group, and links the family.
+- Family links now say who is who. Adding a family member on a person's record offers Parent, Child, Sibling or Other, and the label shows next to the name on both records. Links made from the Group page are labeled automatically. Links recorded before this release show no label until edited.
+
+### Operations
+- Migration 011 adds a relationship label column to family links. Additive only. Applies automatically during the Vercel build.
+
 ## [0.9.4] - 2026-08-18
 
 ### Added

@@ -19,6 +19,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { MultiSelectSearch } from "@/components/ui/multi-select-search";
+import { NewMemberForm } from "@/components/groups/new-member-form";
 import { ConfirmDialog } from "@/components/shared/confirm-dialog";
 import { useToast } from "@/components/ui/use-toast";
 import {
@@ -60,9 +61,11 @@ export default function GroupDetailPage() {
 
   // Students state
   const [showStudentAdd, setShowStudentAdd] = useState(false);
+  const [showNewStudent, setShowNewStudent] = useState(false);
 
   // Parents state
   const [showParentAdd, setShowParentAdd] = useState(false);
+  const [showNewParent, setShowNewParent] = useState(false);
 
   // Meeting locations state
   const [showLocationAdd, setShowLocationAdd] = useState(false);
@@ -283,6 +286,42 @@ export default function GroupDetailPage() {
       toast({ title: "Student added" });
       setShowStudentAdd(false);
       fetchGroup();
+    } catch (error) {
+      toast({ title: "Error", description: error.message, variant: "destructive" });
+    }
+  };
+
+  // Group members first, then everyone else, so the likely match is on top.
+  const membersFirst = (members = []) => {
+    const memberIds = new Set(members.map((m) => m.id));
+    return [
+      ...allPeople.filter((p) => memberIds.has(p.id)),
+      ...allPeople.filter((p) => !memberIds.has(p.id)),
+    ];
+  };
+
+  const handleCreateMember = async (kind, form, relatedIds) => {
+    const relatedKey = kind === "student" ? "parent_ids" : "student_ids";
+    try {
+      const res = await fetch(`/api/groups/${params.id}/${kind}s`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ new_person: form, [relatedKey]: relatedIds }),
+      });
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        throw new Error(body.error || `Failed to create ${kind}`);
+      }
+      toast({ title: `${kind === "student" ? "Student" : "Parent"} created and added` });
+      if (kind === "student") {
+        setShowNewStudent(false);
+        setShowStudentAdd(false);
+      } else {
+        setShowNewParent(false);
+        setShowParentAdd(false);
+      }
+      fetchGroup();
+      fetchPeople();
     } catch (error) {
       toast({ title: "Error", description: error.message, variant: "destructive" });
     }
@@ -789,34 +828,48 @@ export default function GroupDetailPage() {
               <CardContent>
                 {showStudentAdd && (
                   <div className="mb-4 p-3 border rounded-lg bg-muted/50">
-                    <Label className="text-xs mb-2 block">
-                      Search and select student
-                    </Label>
-                    <div className="flex gap-2">
-                      <MultiSelectSearch
-                        options={allPeople.filter(
-                          (p) => !group.students?.some((s) => s.id === p.id)
-                        )}
-                        selected={[]}
-                        onChange={(selected) => {
-                          if (selected.length > 0) {
-                            handleAddStudent(selected[0]);
-                          }
-                        }}
-                        placeholder="Search people..."
-                        renderOption={(p) =>
-                          `${p.first_name} ${p.last_name}`
-                        }
-                        singleSelect
+                    {showNewStudent ? (
+                      <NewMemberForm
+                        kind="student"
+                        relatedOptions={membersFirst(group.parents)}
+                        onSubmit={(form, ids) => handleCreateMember("student", form, ids)}
+                        onCancel={() => setShowNewStudent(false)}
                       />
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        onClick={() => setShowStudentAdd(false)}
-                      >
-                        <X className="h-4 w-4" />
-                      </Button>
-                    </div>
+                    ) : (
+                      <>
+                        <Label className="text-xs mb-2 block">
+                          Search and select student
+                        </Label>
+                        <div className="flex gap-2">
+                          <MultiSelectSearch
+                            options={allPeople.filter(
+                              (p) => !group.students?.some((s) => s.id === p.id)
+                            )}
+                            selected={[]}
+                            onChange={(selected) => {
+                              if (selected.length > 0) {
+                                handleAddStudent(selected[0]);
+                              }
+                            }}
+                            placeholder="Search people..."
+                            renderOption={(p) =>
+                              `${p.first_name} ${p.last_name}`
+                            }
+                            singleSelect
+                          />
+                          <Button size="sm" onClick={() => setShowNewStudent(true)}>
+                            New
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => setShowStudentAdd(false)}
+                          >
+                            <X className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </>
+                    )}
                   </div>
                 )}
                 {!group.students || group.students.length === 0 ? (
@@ -873,34 +926,48 @@ export default function GroupDetailPage() {
               <CardContent>
                 {showParentAdd && (
                   <div className="mb-4 p-3 border rounded-lg bg-muted/50">
-                    <Label className="text-xs mb-2 block">
-                      Search and select parent
-                    </Label>
-                    <div className="flex gap-2">
-                      <MultiSelectSearch
-                        options={allPeople.filter(
-                          (p) => !group.parents?.some((par) => par.id === p.id)
-                        )}
-                        selected={[]}
-                        onChange={(selected) => {
-                          if (selected.length > 0) {
-                            handleAddParent(selected[0]);
-                          }
-                        }}
-                        placeholder="Search people..."
-                        renderOption={(p) =>
-                          `${p.first_name} ${p.last_name}`
-                        }
-                        singleSelect
+                    {showNewParent ? (
+                      <NewMemberForm
+                        kind="parent"
+                        relatedOptions={membersFirst(group.students)}
+                        onSubmit={(form, ids) => handleCreateMember("parent", form, ids)}
+                        onCancel={() => setShowNewParent(false)}
                       />
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        onClick={() => setShowParentAdd(false)}
-                      >
-                        <X className="h-4 w-4" />
-                      </Button>
-                    </div>
+                    ) : (
+                      <>
+                        <Label className="text-xs mb-2 block">
+                          Search and select parent
+                        </Label>
+                        <div className="flex gap-2">
+                          <MultiSelectSearch
+                            options={allPeople.filter(
+                              (p) => !group.parents?.some((par) => par.id === p.id)
+                            )}
+                            selected={[]}
+                            onChange={(selected) => {
+                              if (selected.length > 0) {
+                                handleAddParent(selected[0]);
+                              }
+                            }}
+                            placeholder="Search people..."
+                            renderOption={(p) =>
+                              `${p.first_name} ${p.last_name}`
+                            }
+                            singleSelect
+                          />
+                          <Button size="sm" onClick={() => setShowNewParent(true)}>
+                            New
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => setShowParentAdd(false)}
+                          >
+                            <X className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </>
+                    )}
                   </div>
                 )}
                 {!group.parents || group.parents.length === 0 ? (

@@ -13,7 +13,8 @@ import {
   DialogTitle,
   DialogDescription,
 } from "@/components/ui/dialog";
-import { FileSignature, Send, RotateCw, FileText, Loader2, Upload } from "lucide-react";
+import { FileSignature, Send, RotateCw, FileText, Loader2, Upload, PenLine, QrCode, ExternalLink } from "lucide-react";
+import QRCode from "qrcode";
 import { useToast } from "@/components/ui/use-toast";
 import { deriveWaiverStatus } from "@/lib/waivers";
 import { MAX_UPLOAD_BYTES, fileTooLargeMessage, uploadDocument } from "@/lib/client-upload";
@@ -28,6 +29,9 @@ export function WaiversCard({ personId, defaultEmail }) {
   const [submitting, setSubmitting] = useState(false);
   const [uploading, setUploading] = useState(false);
   const paperFileRef = useRef(null);
+  // In-person signing: { waiver_id, signing_url, qr } while the dialog is open.
+  const [inPerson, setInPerson] = useState(null);
+  const [startingInPerson, setStartingInPerson] = useState(false);
 
   useEffect(() => {
     setEmail(defaultEmail || "");
@@ -89,6 +93,57 @@ export function WaiversCard({ personId, defaultEmail }) {
       load();
     }
   }
+
+  // Open the in-person dialog for a fresh waiver, or re-open one still waiting.
+  async function signInPerson(existingId) {
+    setStartingInPerson(true);
+    try {
+      const res = await fetch(
+        existingId ? `/api/waivers/${existingId}/in-person` : "/api/waivers/in-person",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(existingId ? {} : { person_id: personId }),
+        }
+      );
+      const data = await res.json();
+      if (!res.ok) {
+        toast({ title: "Could not start signing", description: data.error, variant: "destructive" });
+        return;
+      }
+      // Point the link at the site the staff member is on right now, so the
+      // phone that scans the code lands on the same server as this page.
+      const signingUrl = new URL(new URL(data.signing_url).pathname, window.location.origin).toString();
+      const qr = await QRCode.toDataURL(signingUrl, { width: 240, margin: 1 });
+      setInPerson({ waiver_id: data.waiver_id, signing_url: signingUrl, qr });
+      load();
+    } catch (error) {
+      toast({ title: "Could not start signing", description: error.message, variant: "destructive" });
+    } finally {
+      setStartingInPerson(false);
+    }
+  }
+
+  // While the dialog is open, watch for the signature to land so the card
+  // updates itself the moment the parent taps Sign & Submit.
+  useEffect(() => {
+    if (!inPerson) return;
+    const timer = setInterval(async () => {
+      try {
+        const res = await fetch(`/api/waivers?person_id=${personId}`);
+        const data = await res.json();
+        const w = (data.waivers || []).find((x) => x.id === inPerson.waiver_id);
+        if (w?.status === "signed") {
+          setInPerson(null);
+          toast({ title: "Waiver signed", description: `Signed by ${w.signer_name || "guardian"}` });
+          setWaivers(data.waivers || []);
+        }
+      } catch {
+        // keep polling; a blip should not close the dialog
+      }
+    }, 3000);
+    return () => clearInterval(timer);
+  }, [inPerson, personId]);
 
   async function uploadPaperWaiver(e) {
     const file = e.target.files[0];
@@ -154,6 +209,19 @@ export function WaiversCard({ personId, defaultEmail }) {
               )}
               Record Paper Waiver
             </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              disabled={startingInPerson}
+              onClick={() => signInPerson()}
+            >
+              {startingInPerson ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              ) : (
+                <PenLine className="mr-2 h-4 w-4" />
+              )}
+              Sign in Person
+            </Button>
             <Button size="sm" onClick={() => setShowRequest(true)}>
               <Send className="mr-2 h-4 w-4" /> Request Waiver
             </Button>
@@ -199,12 +267,17 @@ export function WaiversCard({ personId, defaultEmail }) {
                           </a>
                         </Button>
                       )}
-                      {(status.key === "waiting" || status.key === "expired") && (
-                        <Button size="sm" variant="outline" onClick={() => resend(w.id)}>
-                          <RotateCw className="mr-1 h-3 w-3" />
-                          {status.key === "expired" ? "Send new link" : "Resend"}
-                        </Button>
-                      )}
+                      {(status.key === "waiting" || status.key === "expired") &&
+                        (w.source === "in_person" ? (
+                          <Button size="sm" variant="outline" onClick={() => signInPerson(w.id)}>
+                            <QrCode className="mr-1 h-3 w-3" /> Show signing link
+                          </Button>
+                        ) : (
+                          <Button size="sm" variant="outline" onClick={() => resend(w.id)}>
+                            <RotateCw className="mr-1 h-3 w-3" />
+                            {status.key === "expired" ? "Send new link" : "Resend"}
+                          </Button>
+                        ))}
                     </div>
                   </div>
                 );
@@ -213,6 +286,37 @@ export function WaiversCard({ personId, defaultEmail }) {
           )}
         </CardContent>
       </Card>
+
+      <Dialog open={!!inPerson} onOpenChange={(open) => !open && setInPerson(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Sign in Person</DialogTitle>
+            <DialogDescription>
+              Hand over this device, or have the parent scan the code with their phone. This card
+              updates on its own once they sign. The link is good for 24 hours.
+            </DialogDescription>
+          </DialogHeader>
+          {inPerson && (
+            <div className="flex flex-col items-center gap-4 py-2">
+              {/* eslint-disable-next-line @next/next/no-img-element -- data URL, nothing for next/image to optimize */}
+              <img src={inPerson.qr} alt="QR code for the signing page" className="h-60 w-60 rounded-md border" />
+              <Button asChild className="w-full">
+                <a href={inPerson.signing_url} target="_blank" rel="noreferrer">
+                  <ExternalLink className="mr-2 h-4 w-4" /> Open signing page on this device
+                </a>
+              </Button>
+              <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                <Loader2 className="h-3 w-3 animate-spin" /> Waiting for signature…
+              </div>
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setInPerson(null)}>
+              Close
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <Dialog open={showRequest} onOpenChange={setShowRequest}>
         <DialogContent>

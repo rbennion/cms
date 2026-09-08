@@ -215,7 +215,8 @@ export default function WaiversPage() {
                             </a>
                           </Button>
                         )}
-                        {(status.key === "waiting" || status.key === "expired") && (
+                        {(status.key === "waiting" || status.key === "expired") &&
+                          waiver.source !== "in_person" && (
                           <Button
                             size="sm"
                             variant="outline"

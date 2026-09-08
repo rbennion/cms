@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { get, run, all } from "@/lib/db";
 import { attachBgExpiry } from "@/lib/certifications-server";
 import { requireAuth } from "@/lib/api-auth";
+import { FAMILY_MEMBERS_SQL, linkFamily, unlinkFamily } from "@/lib/family";
 
 export const dynamic = 'force-dynamic'
 
@@ -113,16 +114,7 @@ export async function GET(request, { params }) {
     );
 
     // Get family members (bidirectional relationship)
-    const family_members = await all(`
-      SELECT p.id, p.first_name, p.last_name, p.email, p.phone
-      FROM people p
-      WHERE p.id IN (
-        SELECT related_person_id FROM family_relationships WHERE person_id = ?
-        UNION
-        SELECT person_id FROM family_relationships WHERE related_person_id = ?
-      )
-      ORDER BY p.last_name, p.first_name
-    `, [id, id])
+    const family_members = await all(FAMILY_MEMBERS_SQL, [id, id, id, id])
 
     return NextResponse.json({
       ...person,
@@ -280,21 +272,15 @@ export async function PUT(request, { params }) {
 
     // Update family relationships
     if (family_member_ids !== undefined) {
-      // Delete existing relationships where this person is person_id
-      await run('DELETE FROM family_relationships WHERE person_id = ?', [id]);
-      // Also delete reverse relationships where this person is related_person_id
-      await run('DELETE FROM family_relationships WHERE related_person_id = ?', [id]);
-
-      if (family_member_ids.length > 0) {
-        for (const memberId of family_member_ids) {
-          // Only insert if not linking to self
-          if (memberId !== parseInt(id)) {
-            await run(
-              'INSERT INTO family_relationships (person_id, related_person_id) VALUES (?, ?) ON CONFLICT DO NOTHING',
-              [id, memberId]
-            );
-          }
-        }
+      // Keep links that are still listed (and their labels), drop the rest,
+      // add any new ones unlabeled. Labeled links are made via /family.
+      const wanted = new Set(family_member_ids.map((m) => parseInt(m, 10)).filter((m) => m !== parseInt(id, 10)));
+      const current = await all(FAMILY_MEMBERS_SQL, [id, id, id, id]);
+      for (const member of current) {
+        if (!wanted.has(member.id)) await unlinkFamily(run, id, member.id);
+      }
+      for (const memberId of wanted) {
+        if (!current.some((m) => m.id === memberId)) await linkFamily(run, get, id, memberId, null);
       }
     }
 
