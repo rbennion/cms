@@ -33,7 +33,9 @@ import {
   Plus,
   Crown,
   Building2,
+  Download,
 } from "lucide-react";
+import { rosterFilename } from "@/lib/group-roster";
 
 export default function GroupDetailPage() {
   const params = useParams();
@@ -42,6 +44,7 @@ export default function GroupDetailPage() {
   const [group, setGroup] = useState(null);
   const [loading, setLoading] = useState(true);
   const [showDelete, setShowDelete] = useState(false);
+  const [exportingRoster, setExportingRoster] = useState(false);
   const [isEditingInfo, setIsEditingInfo] = useState(false);
   const [groupData, setGroupData] = useState({
     name: "",
@@ -142,6 +145,33 @@ export default function GroupDetailPage() {
         description: error.message,
         variant: "destructive",
       });
+    }
+  };
+
+  const handleExportRoster = async () => {
+    setExportingRoster(true);
+    try {
+      const res = await fetch(`/api/groups/${params.id}/roster`);
+      if (!res.ok) throw new Error("Export failed");
+      const blob = await res.blob();
+      const filename = rosterFilename(group.name);
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      window.URL.revokeObjectURL(url);
+      toast({ title: "Export complete", description: `Downloaded ${filename}` });
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    } finally {
+      setExportingRoster(false);
     }
   };
 
@@ -453,14 +483,20 @@ export default function GroupDetailPage() {
   return (
     <div className="flex flex-col">
       <Header title={group.name}>
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={() => setShowDelete(true)}
-          className="text-muted-foreground hover:text-destructive"
-        >
-          <Trash2 className="h-4 w-4" />
-        </Button>
+        <div className="flex gap-2">
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => setShowDelete(true)}
+            className="text-muted-foreground hover:text-destructive"
+          >
+            <Trash2 className="h-4 w-4" />
+          </Button>
+          <Button variant="outline" onClick={handleExportRoster} disabled={exportingRoster}>
+            <Download className="mr-2 h-4 w-4" />
+            {exportingRoster ? "Exporting..." : "Export Roster"}
+          </Button>
+        </div>
       </Header>
 
       <div className="p-6">

@@ -4,6 +4,11 @@ All notable changes to the Fight Club CRM application will be documented in this
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.9.6] - 2026-09-23
+
+### Added
+- Group roster download. Each Group page has an "Export Roster" button that downloads a spreadsheet (CSV) of the group's families: every student with their email and phone, next to their parent's name, email and phone. A student with two parents gets a row for each. A Notes column flags gaps to follow up on: no parent listed, a student and parent sharing one email, a missing email or phone, or a parent in the group who is not linked to any student.
+
 ## [0.9.5] - 2026-09-08
 
 ### Added

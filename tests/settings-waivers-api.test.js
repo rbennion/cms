@@ -161,6 +161,6 @@ describe("release notes", () => {
     const res = await releaseNotes.GET(new Request("http://test/api/release-notes"));
     expect(res.status).toBe(200);
     const body = await res.json();
-    expect(JSON.stringify(body)).toContain("0.9.5");
+    expect(JSON.stringify(body)).toContain("0.9.6");
   });
 });
