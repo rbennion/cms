@@ -125,6 +125,8 @@ export async function POST(request) {
       city,
       state,
       zip,
+      instagram_handle,
+      facebook_handle,
       stage_id,
       company_ids,
       role_ids,
@@ -139,8 +141,8 @@ export async function POST(request) {
     }
 
     const result = await run(
-      `INSERT INTO people (first_name, middle_name, last_name, email, phone, title, address, city, state, zip, stage_id)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      `INSERT INTO people (first_name, middle_name, last_name, email, phone, title, address, city, state, zip, instagram_handle, facebook_handle, stage_id)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         first_name,
         middle_name || null,
@@ -152,6 +154,8 @@ export async function POST(request) {
         city || null,
         state || null,
         zip || null,
+        instagram_handle || null,
+        facebook_handle || null,
         stage_id || null,
       ]
     );

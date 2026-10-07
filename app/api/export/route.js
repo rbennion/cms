@@ -34,6 +34,7 @@ export async function GET(request) {
       let query = `
         SELECT p.id, p.first_name, p.last_name, p.email, p.phone,
                p.title, p.address, p.city, p.state, p.zip,
+               p.instagram_handle, p.facebook_handle,
                (SELECT STRING_AGG(r.name, '; ')
                 FROM person_roles pr
                 JOIN roles r ON pr.role_id = r.id
@@ -108,6 +109,8 @@ export async function GET(request) {
         "city",
         "state",
         "zip",
+        "instagram_handle",
+        "facebook_handle",
         "family_members",
       ];
     } else if (entityType === "companies") {

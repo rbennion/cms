@@ -38,6 +38,8 @@ import {
   Mail,
   Phone,
   MapPin,
+  Instagram,
+  Facebook,
   Building2,
   GraduationCap,
   DollarSign,
@@ -71,6 +73,8 @@ export default function PersonDetailPage() {
     city: "",
     state: "",
     zip: "",
+    instagram_handle: "",
+    facebook_handle: "",
   });
   const [allCompanies, setAllCompanies] = useState([]);
   const [allSchools, setAllSchools] = useState([]);
@@ -145,6 +149,8 @@ export default function PersonDetailPage() {
         city: data.city || "",
         state: data.state || "",
         zip: data.zip || "",
+        instagram_handle: data.instagram_handle || "",
+        facebook_handle: data.facebook_handle || "",
       });
     } catch (error) {
       toast({
@@ -203,6 +209,8 @@ export default function PersonDetailPage() {
       city: person.city || "",
       state: person.state || "",
       zip: person.zip || "",
+      instagram_handle: person.instagram_handle || "",
+      facebook_handle: person.facebook_handle || "",
     });
     setIsEditingProfile(false);
   };
@@ -651,6 +659,22 @@ export default function PersonDetailPage() {
                       </div>
                     </div>
                   )}
+                  {person.instagram_handle && (
+                    <div className="flex items-center gap-3">
+                      <Instagram className="h-4 w-4 text-muted-foreground" />
+                      <span className="text-sm break-all">
+                        {person.instagram_handle}
+                      </span>
+                    </div>
+                  )}
+                  {person.facebook_handle && (
+                    <div className="flex items-center gap-3">
+                      <Facebook className="h-4 w-4 text-muted-foreground" />
+                      <span className="text-sm break-all">
+                        {person.facebook_handle}
+                      </span>
+                    </div>
+                  )}
                 </div>
               ) : (
                 <div className="mt-6 space-y-4">
@@ -724,6 +748,38 @@ export default function PersonDetailPage() {
                     onChange={setProfileData}
                     showCard={false}
                   />
+                  <div className="space-y-2">
+                    <Label htmlFor="instagram_handle" className="text-xs">
+                      Instagram Handle
+                    </Label>
+                    <Input
+                      id="instagram_handle"
+                      value={profileData.instagram_handle}
+                      onChange={(e) =>
+                        setProfileData({
+                          ...profileData,
+                          instagram_handle: e.target.value,
+                        })
+                      }
+                      className="h-8 text-sm"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="facebook_handle" className="text-xs">
+                      Facebook Handle
+                    </Label>
+                    <Input
+                      id="facebook_handle"
+                      value={profileData.facebook_handle}
+                      onChange={(e) =>
+                        setProfileData({
+                          ...profileData,
+                          facebook_handle: e.target.value,
+                        })
+                      }
+                      className="h-8 text-sm"
+                    />
+                  </div>
                 </div>
               )}
             </CardContent>

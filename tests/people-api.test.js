@@ -98,6 +98,61 @@ describe("editing a person", () => {
   });
 });
 
+describe("social handles", () => {
+  const getPerson = async (id) =>
+    (await one.GET(new Request("http://test/x"), params(id))).json();
+
+  it("saves both handles on create, exactly as typed", async () => {
+    const res = await list.POST(json("http://test/api/people", "POST", {
+      first_name: `${TEST_PREFIX}Grace`, last_name: "Hopper",
+      email: "zztest.grace@example.invalid", phone: "555-0102",
+      instagram_handle: "@grace.hopper_1906",
+      facebook_handle: "https://facebook.com/grace.hopper",
+    }));
+    expect(res.status).toBeLessThan(300);
+    const check = await getPerson((await res.json()).id);
+    expect(check.instagram_handle).toBe("@grace.hopper_1906");
+    expect(check.facebook_handle).toBe("https://facebook.com/grace.hopper");
+  });
+
+  it("saves both handles on edit", async () => {
+    const res = await one.PUT(
+      json(`http://test/api/people/${personId}`, "PUT", {
+        instagram_handle: "adabyron1815", facebook_handle: "ada.byron",
+      }),
+      params(personId)
+    );
+    expect(res.status).toBeLessThan(300);
+    const check = await getPerson(personId);
+    expect(check.instagram_handle).toBe("adabyron1815");
+    expect(check.facebook_handle).toBe("ada.byron");
+  });
+
+  it("keeps the handles when other details are edited", async () => {
+    await one.PUT(
+      json(`http://test/api/people/${personId}`, "PUT", {
+        first_name: `${TEST_PREFIX}Ada`, last_name: "Byron",
+        email: "zztest.ada@example.invalid", phone: "555-0198",
+      }),
+      params(personId)
+    );
+    const check = await getPerson(personId);
+    expect(check.phone).toBe("555-0198");
+    expect(check.instagram_handle).toBe("adabyron1815");
+    expect(check.facebook_handle).toBe("ada.byron");
+  });
+
+  it("clears a handle that is emptied", async () => {
+    await one.PUT(
+      json(`http://test/api/people/${personId}`, "PUT", { instagram_handle: "" }),
+      params(personId)
+    );
+    const check = await getPerson(personId);
+    expect(check.instagram_handle).toBeNull();
+    expect(check.facebook_handle).toBe("ada.byron");
+  });
+});
+
 describe("notes on a person", () => {
   let noteId;
 

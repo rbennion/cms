@@ -40,6 +40,8 @@ export function PersonForm({ person, isEdit = false }) {
     city: person?.city || "",
     state: person?.state || "",
     zip: person?.zip || "",
+    instagram_handle: person?.instagram_handle || "",
+    facebook_handle: person?.facebook_handle || "",
     stage_id: person?.stage_id || null,
     role_ids: person?.roles?.map((r) => r.id) || [],
   });
@@ -225,6 +227,26 @@ export function PersonForm({ person, isEdit = false }) {
               value={formData.title}
               onChange={(e) =>
                 setFormData({ ...formData, title: e.target.value })
+              }
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="instagram_handle">Instagram Handle</Label>
+            <Input
+              id="instagram_handle"
+              value={formData.instagram_handle}
+              onChange={(e) =>
+                setFormData({ ...formData, instagram_handle: e.target.value })
+              }
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="facebook_handle">Facebook Handle</Label>
+            <Input
+              id="facebook_handle"
+              value={formData.facebook_handle}
+              onChange={(e) =>
+                setFormData({ ...formData, facebook_handle: e.target.value })
               }
             />
           </div>

@@ -135,6 +135,13 @@ describe("exports", () => {
     expect(text.split("\n")[0]).toMatch(/name|email/i);
   });
 
+  it("includes the Instagram and Facebook handles in the people export", async () => {
+    const res = await exportRoute.GET(new Request("http://test/api/export?entityType=people"));
+    const header = (await res.text()).split("\n")[0].split(",");
+    expect(header).toContain("instagram_handle");
+    expect(header).toContain("facebook_handle");
+  });
+
   it("exports each of the other record types", async () => {
     for (const entity of ["companies", "schools", "groups", "donations"]) {
       const res = await exportRoute.GET(new Request(`http://test/api/export?entityType=${entity}`));
@@ -161,6 +168,6 @@ describe("release notes", () => {
     const res = await releaseNotes.GET(new Request("http://test/api/release-notes"));
     expect(res.status).toBe(200);
     const body = await res.json();
-    expect(JSON.stringify(body)).toContain("0.9.6");
+    expect(JSON.stringify(body)).toContain("0.9.7");
   });
 });

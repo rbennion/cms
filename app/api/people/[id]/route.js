@@ -156,6 +156,8 @@ export async function PUT(request, { params }) {
       city,
       state,
       zip,
+      instagram_handle,
+      facebook_handle,
       stage_id,
       company_ids,
       role_ids,
@@ -181,6 +183,8 @@ export async function PUT(request, { params }) {
       city !== undefined ||
       state !== undefined ||
       zip !== undefined ||
+      instagram_handle !== undefined ||
+      facebook_handle !== undefined ||
       stage_id !== undefined;
 
     if (hasPersonFields) {
@@ -208,6 +212,7 @@ export async function PUT(request, { params }) {
         `UPDATE people SET
           first_name = ?, middle_name = ?, last_name = ?, email = ?, guardian_email = ?, phone = ?,
           title = ?, address = ?, city = ?, state = ?, zip = ?,
+          instagram_handle = ?, facebook_handle = ?,
           stage_id = ?,
           updated_at = CURRENT_TIMESTAMP
          WHERE id = ?`,
@@ -225,6 +230,8 @@ export async function PUT(request, { params }) {
           city !== undefined ? city || null : existing.city,
           state !== undefined ? state || null : existing.state,
           zip !== undefined ? zip || null : existing.zip,
+          instagram_handle !== undefined ? instagram_handle || null : existing.instagram_handle,
+          facebook_handle !== undefined ? facebook_handle || null : existing.facebook_handle,
           stage_id !== undefined ? stage_id || null : existing.stage_id,
           id,
         ]

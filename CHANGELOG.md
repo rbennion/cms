@@ -4,6 +4,14 @@ All notable changes to the Fight Club CRM application will be documented in this
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.9.7] - 2026-10-07
+
+### Added
+- Instagram and Facebook handles on People. Both are optional and take any text, saved exactly as typed. Edit them with the pencil on a person's Contact Information card, or fill them in on the New Person form. They show on the card under the address, and the People export has a column for each.
+
+### Operations
+- Migration 012 adds the two handle columns to people. Additive only. Applies automatically during the Vercel build.
+
 ## [0.9.6] - 2026-09-23
 
 ### Added
