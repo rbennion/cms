@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { all, run, get } from "@/lib/db";
 import { requireAuth } from "@/lib/api-auth";
+import { searchClause, SEARCH_FIELDS } from "@/lib/search";
 
 export const dynamic = 'force-dynamic'
 
@@ -21,10 +22,9 @@ export async function GET(request) {
     let query = "SELECT * FROM companies WHERE 1=1";
     const params = [];
 
-    if (search) {
-      query += " AND name ILIKE ?";
-      params.push(`%${search}%`);
-    }
+    const matching = searchClause(search, SEARCH_FIELDS.companies);
+    query += matching.sql;
+    params.push(...matching.params);
 
     if (isDonor !== null && isDonor !== undefined) {
       query += " AND is_donor = ?";

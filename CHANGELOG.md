@@ -4,6 +4,13 @@ All notable changes to the Fight Club CRM application will be documented in this
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.9.8] - 2026-10-07
+
+### Changed
+- Every search box now matches word by word. Each word typed must appear somewhere in the record, in any order, so "jill p", "parker jill" and "Brad Anderson" all find the right person. Extra or trailing spaces no longer empty the list. Applies to the People, Companies, Schools, Groups, Donations, Certifications and Waivers pages, their exports, and every "Search people / companies / schools / groups" picker.
+- People search finds phone numbers however they are typed: 9135497452, (913) 549-7452, 913.549.7452 and 7452 all find 913-549-7452. People search also checks middle names.
+- Email and phone are now optional on People. Only first and last name are required, on the New Person form, the Contact Information card, and when adding a new student or parent from a Group.
+
 ## [0.9.7] - 2026-10-07
 
 ### Added

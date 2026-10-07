@@ -16,6 +16,7 @@ import {
 } from "@/components/ui/table";
 import { useToast } from "@/components/ui/use-toast";
 import { SearchInput } from "@/components/shared/search-input";
+import { matchesSearch } from "@/lib/search";
 import { deriveWaiverStatus } from "@/lib/waivers";
 import { WaiverStatusLine, WaiverSteps } from "@/components/waivers/waiver-status";
 import { FileText, RotateCw } from "lucide-react";
@@ -66,14 +67,11 @@ export default function WaiversPage() {
   };
 
   const rows = useMemo(() => {
-    const term = search.toLowerCase();
     return waivers
       .map((w) => ({ waiver: w, status: deriveWaiverStatus(w) }))
-      .filter(({ waiver }) => {
-        if (!term) return true;
-        const name = `${waiver.first_name} ${waiver.last_name}`.toLowerCase();
-        return name.includes(term) || waiver.sent_to_email?.toLowerCase().includes(term);
-      })
+      .filter(({ waiver }) =>
+        matchesSearch(search, [waiver.first_name, waiver.last_name, waiver.sent_to_email])
+      )
       .filter(({ status }) => !groupFilter || status.key === groupFilter);
   }, [waivers, search, groupFilter]);
 

@@ -165,14 +165,26 @@ describe("creating a student or parent from a group", () => {
     expect(fam).toEqual([expect.objectContaining({ id: newStudentId, relationship: "child" })]);
   });
 
-  it("refuses a new person missing email or phone", async () => {
+  it("refuses a new person missing a last name", async () => {
     const res = await students.POST(
       json("http://test/x", "POST", {
-        new_person: { first_name: `${TEST_PREFIX}No`, last_name: "Phone", email: "x@example.invalid" },
+        new_person: { first_name: `${TEST_PREFIX}No`, email: "x@example.invalid", phone: "555-0204" },
       }),
       params(groupId)
     );
     expect(res.status).toBe(400);
+  });
+
+  it("creates a new student with no email or phone", async () => {
+    const res = await students.POST(
+      json("http://test/x", "POST", {
+        new_person: { first_name: `${TEST_PREFIX}NoContact`, last_name: "Student" },
+      }),
+      params(groupId)
+    );
+    expect(res.status).toBe(201);
+    const person = await get("SELECT email, phone FROM people WHERE id = ?", [(await res.json()).person_id]);
+    expect(person).toEqual({ email: null, phone: null });
   });
 
   it("refuses to tie to a parent that does not exist", async () => {

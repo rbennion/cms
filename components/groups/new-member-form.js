@@ -60,7 +60,6 @@ export function NewMemberForm({ kind, relatedOptions, onSubmit, onCancel }) {
             value={form.email}
             onChange={set("email")}
             className="h-8 text-sm"
-            required
           />
         </div>
         <div className="space-y-1">
@@ -70,7 +69,6 @@ export function NewMemberForm({ kind, relatedOptions, onSubmit, onCancel }) {
             value={form.phone}
             onChange={set("phone")}
             className="h-8 text-sm"
-            required
           />
         </div>
         <div className="space-y-1">

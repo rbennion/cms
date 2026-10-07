@@ -41,6 +41,14 @@ describe("companies", () => {
     expect(rows(await res.json()).some((c) => c.id === companyId)).toBe(true);
   });
 
+  it("searches word by word, in any order", async () => {
+    const ids = async (term) =>
+      rows(await (await companies.GET(new Request(`http://test/api/companies?search=${encodeURIComponent(term)}`))).json())
+        .map((c) => c.id);
+    expect(await ids(`Ltd ${TEST_PREFIX}`)).toContain(companyId);
+    expect(await ids(`${TEST_PREFIX} Gadgets`)).not.toContain(companyId);
+  });
+
   it("reads one back", async () => {
     const res = await company.GET(new Request("http://test/x"), params(companyId));
     expect(res.status).toBe(200);
@@ -72,6 +80,15 @@ describe("schools", () => {
     expect(rows(await res.json()).some((s) => s.id === schoolId)).toBe(true);
   });
 
+  it("searches name and city word by word", async () => {
+    const ids = async (term) =>
+      rows(await (await schools.GET(new Request(`http://test/api/schools?search=${encodeURIComponent(term)}`))).json())
+        .map((s) => s.id);
+    expect(await ids(`olathe ${TEST_PREFIX}`)).toContain(schoolId);
+    expect(await ids(`school high ${TEST_PREFIX}`)).toContain(schoolId);
+    expect(await ids(`${TEST_PREFIX} Wichita`)).not.toContain(schoolId);
+  });
+
   it("saves an edit", async () => {
     const res = await school.PUT(
       json("http://test/x", "PUT", { name: `${TEST_PREFIX} High Renamed` }),
@@ -96,6 +113,16 @@ describe("groups", () => {
       school_id: schoolId, name: `${TEST_PREFIX} Bad`, gender: "Other", year: 2026,
     }));
     expect(res.status).toBeGreaterThanOrEqual(400);
+  });
+
+  it("searches group and school names word by word", async () => {
+    const ids = async (term) =>
+      rows(await (await groups.GET(new Request(`http://test/api/groups?search=${encodeURIComponent(term)}`))).json())
+        .map((g) => g.id);
+    expect(await ids(`girls ${TEST_PREFIX}`)).toContain(groupId);
+    // "Renamed" is in the school's name, "Girls" in the group's.
+    expect(await ids("renamed girls")).toContain(groupId);
+    expect(await ids(`${TEST_PREFIX} Boys`)).not.toContain(groupId);
   });
 
   it("reads one back with its school", async () => {

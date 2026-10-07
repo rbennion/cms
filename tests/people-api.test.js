@@ -17,11 +17,21 @@ let personId;
 afterAll(async () => { await cleanupTestRecords(); });
 
 describe("creating a person", () => {
-  it("requires a name, an email and a phone number", async () => {
+  it("requires a first and last name", async () => {
     const missing = await list.POST(json("http://test/api/people", "POST", {
-      first_name: `${TEST_PREFIX}NoEmail`, last_name: "Person",
+      first_name: `${TEST_PREFIX}NoLastName`, email: "zztest.nolast@example.invalid", phone: "555-0104",
     }));
     expect(missing.status).toBe(400);
+  });
+
+  it("creates a person with no email or phone", async () => {
+    const res = await list.POST(json("http://test/api/people", "POST", {
+      first_name: `${TEST_PREFIX}NameOnly`, last_name: "Person",
+    }));
+    expect(res.status).toBe(201);
+    const body = await res.json();
+    expect(body.email).toBeNull();
+    expect(body.phone).toBeNull();
   });
 
   it("creates a person with the required details", async () => {
@@ -58,6 +68,50 @@ describe("reading people", () => {
     expect(body.data.some((p) => p.id === personId)).toBe(true);
   });
 
+  const searchIds = async (term) => {
+    const res = await list.GET(new Request(`http://test/api/people?search=${encodeURIComponent(term)}`));
+    return (await res.json()).data.map((p) => p.id);
+  };
+
+  it("finds someone by first and last name together, in either order", async () => {
+    expect(await searchIds(`${TEST_PREFIX}Ada Lovelace`)).toContain(personId);
+    expect(await searchIds(`Lovelace ${TEST_PREFIX}Ada`)).toContain(personId);
+  });
+
+  it("finds someone from a first name and the start of a last name", async () => {
+    expect(await searchIds(`${TEST_PREFIX}Ada L`)).toContain(personId);
+  });
+
+  it("ignores extra and trailing spaces", async () => {
+    expect(await searchIds(`  ${TEST_PREFIX}Ada   Lovelace `)).toContain(personId);
+    expect(await searchIds(`${TEST_PREFIX}Ada `)).toContain(personId);
+  });
+
+  it("needs every word to match", async () => {
+    expect(await searchIds(`${TEST_PREFIX}Ada Hopper`)).not.toContain(personId);
+  });
+
+  it("finds someone by phone however the number is typed", async () => {
+    // Stored as 555-0101.
+    for (const typed of ["5550101", "555-0101", "555.0101", "(555) 0101", "555 0101"]) {
+      expect(await searchIds(typed), typed).toContain(personId);
+    }
+  });
+
+  it("does not match digits that run across the dashes", async () => {
+    // 555-0101 holds 5, 0 in a row only if the dash is ignored.
+    expect(await searchIds(`${TEST_PREFIX}Ada 50`)).not.toContain(personId);
+  });
+
+  it("mixes name and phone words", async () => {
+    expect(await searchIds(`${TEST_PREFIX}Ada 0101`)).toContain(personId);
+  });
+
+  it("treats % and _ as ordinary characters, not wildcards", async () => {
+    expect(await searchIds("%")).toEqual([]);
+    expect(await searchIds("_")).toEqual([]);
+  });
+
   it("returns the full record, including the certification checklist", async () => {
     const res = await one.GET(new Request(`http://test/api/people/${personId}`), params(personId));
     expect(res.status).toBe(200);
@@ -87,14 +141,27 @@ describe("editing a person", () => {
     expect(check.phone).toBe("555-0199");
   });
 
-  it("still requires the mandatory details on edit", async () => {
+  it("still requires a first and last name on edit", async () => {
+    const res = await one.PUT(
+      json(`http://test/api/people/${personId}`, "PUT", {
+        first_name: `${TEST_PREFIX}Ada`, last_name: "",
+      }),
+      params(personId)
+    );
+    expect(res.status).toBe(400);
+  });
+
+  it("lets email and phone be cleared on edit", async () => {
     const res = await one.PUT(
       json(`http://test/api/people/${personId}`, "PUT", {
         first_name: `${TEST_PREFIX}Ada`, last_name: "Byron", email: "", phone: "",
       }),
       params(personId)
     );
-    expect(res.status).toBe(400);
+    expect(res.status).toBeLessThan(300);
+    const check = await (await one.GET(new Request("http://test/x"), params(personId))).json();
+    expect(check.email).toBeNull();
+    expect(check.phone).toBeNull();
   });
 });
 

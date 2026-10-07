@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { all, run, get } from "@/lib/db";
 import { requireAuth } from "@/lib/api-auth";
+import { searchClause, SEARCH_FIELDS } from "@/lib/search";
 
 export const dynamic = 'force-dynamic'
 
@@ -37,11 +38,9 @@ export async function GET(request) {
     `;
     const params = [];
 
-    if (search) {
-      baseQuery += ` AND (p.first_name ILIKE ? OR p.last_name ILIKE ? OR p.email ILIKE ? OR p.phone ILIKE ?)`;
-      const searchTerm = `%${search}%`;
-      params.push(searchTerm, searchTerm, searchTerm, searchTerm);
-    }
+    const matching = searchClause(search, SEARCH_FIELDS.people);
+    baseQuery += matching.sql;
+    params.push(...matching.params);
 
     if (roleIds) {
       const roleIdArray = roleIds
@@ -133,9 +132,9 @@ export async function POST(request) {
       school_ids,
     } = body;
 
-    if (!first_name?.trim() || !last_name?.trim() || !email?.trim() || !phone?.trim()) {
+    if (!first_name?.trim() || !last_name?.trim()) {
       return NextResponse.json(
-        { error: "Name, email, and phone are required" },
+        { error: "First and last name are required" },
         { status: 400 }
       );
     }

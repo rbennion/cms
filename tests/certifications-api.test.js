@@ -124,6 +124,14 @@ describe("reading the certification roster", () => {
     expect(mine.first_name).toBe("ZZTest");
   });
 
+  it("searches by name word by word, in any order", async () => {
+    const ids = async (term) =>
+      (await (await GET(new Request(`http://test/api/certifications?search=${encodeURIComponent(term)}`))).json())
+        .map((r) => r.person_id);
+    expect(await ids("certification zztest")).toContain(personId);
+    expect(await ids("ZZTest Nobody")).not.toContain(personId);
+  });
+
   it("filters by background check status", async () => {
     const res = await GET(new Request("http://test/api/certifications?background_check_status=approved"));
     const rows = await res.json();

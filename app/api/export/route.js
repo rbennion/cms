@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { all } from "@/lib/db";
 import { auth } from "@/lib/auth";
+import { searchClause, SEARCH_FIELDS } from "@/lib/search";
 
 export const dynamic = "force-dynamic";
 
@@ -44,11 +45,9 @@ export async function GET(request) {
       `;
       const params = [];
 
-      if (filters.search) {
-        query += ` AND (p.first_name ILIKE ? OR p.last_name ILIKE ? OR p.email ILIKE ? OR p.phone ILIKE ?)`;
-        const searchTerm = `%${filters.search}%`;
-        params.push(searchTerm, searchTerm, searchTerm, searchTerm);
-      }
+      const matching = searchClause(filters.search, SEARCH_FIELDS.people);
+      query += matching.sql;
+      params.push(...matching.params);
 
       const roleIdArray = Array.isArray(filters.role_ids)
         ? filters.role_ids.map((id) => String(id).trim()).filter(Boolean)
@@ -122,10 +121,9 @@ export async function GET(request) {
       `;
       const params = [];
 
-      if (filters.search) {
-        query += ` AND name ILIKE ?`;
-        params.push(`%${filters.search}%`);
-      }
+      const matching = searchClause(filters.search, SEARCH_FIELDS.companies);
+      query += matching.sql;
+      params.push(...matching.params);
 
       if (filters.is_donor !== undefined && filters.is_donor !== "") {
         query += ` AND is_donor = ?`;
@@ -154,11 +152,9 @@ export async function GET(request) {
       `;
       const params = [];
 
-      if (filters.search) {
-        query += ` AND (name ILIKE ? OR city ILIKE ?)`;
-        const searchTerm = `%${filters.search}%`;
-        params.push(searchTerm, searchTerm);
-      }
+      const matching = searchClause(filters.search, SEARCH_FIELDS.schools);
+      query += matching.sql;
+      params.push(...matching.params);
 
       query += " ORDER BY name";
 
@@ -176,11 +172,9 @@ export async function GET(request) {
       `;
       const params = [];
 
-      if (filters.search) {
-        query += ` AND (p.first_name ILIKE ? OR p.last_name ILIKE ? OR c.name ILIKE ? OR d.note ILIKE ?)`;
-        const searchTerm = `%${filters.search}%`;
-        params.push(searchTerm, searchTerm, searchTerm, searchTerm);
-      }
+      const matching = searchClause(filters.search, SEARCH_FIELDS.donations);
+      query += matching.sql;
+      params.push(...matching.params);
 
       if (filters.donor_type === "person") {
         query += ` AND d.person_id IS NOT NULL`;
@@ -244,17 +238,9 @@ export async function GET(request) {
         params.push(filters.year);
       }
 
-      if (filters.search) {
-        query += ` AND (
-          g.name ILIKE ? OR
-          s.name ILIKE ? OR
-          pl.first_name ILIKE ? OR
-          pl.last_name ILIKE ? OR
-          CONCAT(pl.first_name, ' ', pl.last_name) ILIKE ?
-        )`;
-        const searchTerm = `%${filters.search}%`;
-        params.push(searchTerm, searchTerm, searchTerm, searchTerm, searchTerm);
-      }
+      const matching = searchClause(filters.search, SEARCH_FIELDS.groups);
+      query += matching.sql;
+      params.push(...matching.params);
 
       query += " ORDER BY s.name, g.name";
 

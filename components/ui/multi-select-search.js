@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { X, Search, Check } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { matchesSearch } from "@/lib/search";
 
 export function MultiSelectSearch({
   options = [],
@@ -33,7 +34,7 @@ export function MultiSelectSearch({
 
   const filteredOptions = options.filter((option) => {
     const label = renderOption ? renderOption(option) : option.name;
-    return label?.toLowerCase().includes(search.toLowerCase());
+    return matchesSearch(search, [label]);
   });
 
   const handleSelect = (option) => {

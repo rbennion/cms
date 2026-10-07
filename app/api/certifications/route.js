@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { all, run, get } from '@/lib/db'
 import { attachBgExpiry } from '@/lib/certifications-server'
 import { requireAuth } from '@/lib/api-auth'
+import { searchClause, SEARCH_FIELDS } from '@/lib/search'
 
 export const dynamic = 'force-dynamic'
 
@@ -23,11 +24,9 @@ export async function GET(request) {
     `
     const params = []
 
-    if (search) {
-      query += ' AND (p.first_name ILIKE ? OR p.last_name ILIKE ? OR p.email ILIKE ?)'
-      const searchTerm = `%${search}%`
-      params.push(searchTerm, searchTerm, searchTerm)
-    }
+    const matching = searchClause(search, SEARCH_FIELDS.certifications)
+    query += matching.sql
+    params.push(...matching.params)
 
     if (backgroundCheckStatus) {
       query += ' AND c.background_check_status = ?'

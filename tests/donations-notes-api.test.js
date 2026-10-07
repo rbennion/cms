@@ -53,6 +53,16 @@ describe("donations", () => {
     expect(mine).toBeTruthy();
   });
 
+  it("searches donor name and note word by word", async () => {
+    const ids = async (term) =>
+      rows(await (await donations.GET(new Request(`http://test/api/donations?limit=50&search=${encodeURIComponent(term)}`))).json())
+        .map((d) => d.id);
+    expect(await ids(`person ${TEST_PREFIX}Donor`)).toContain(donationId);
+    // "gift" is in the note, "Person" in the donor's name.
+    expect(await ids(`gift person ${TEST_PREFIX}`)).toContain(donationId);
+    expect(await ids(`${TEST_PREFIX}Donor Nobody`)).not.toContain(donationId);
+  });
+
   it("saves an edited amount and date", async () => {
     const res = await donation.PUT(
       json("http://test/x", "PUT", {

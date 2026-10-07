@@ -24,6 +24,7 @@ import {
 import { MultiSelectSearch } from "@/components/ui/multi-select-search";
 import { useToast } from "@/components/ui/use-toast";
 import { SearchInput } from "@/components/shared/search-input";
+import { matchesSearch } from "@/lib/search";
 import { CertificationPanel } from "@/components/certifications/certification-panel";
 import { bgCheckExpired, deriveCertStatus, STATUS_GROUPS } from "@/lib/certifications";
 import { CheckCircle, Minus } from "lucide-react";
@@ -78,14 +79,11 @@ export default function CertificationsPage() {
   };
 
   const rows = useMemo(() => {
-    const term = search.toLowerCase();
     return certifications
       .map((cert) => ({ cert, status: deriveCertStatus(cert) }))
-      .filter(({ cert }) => {
-        if (!term) return true;
-        const name = `${cert.first_name} ${cert.last_name}`.toLowerCase();
-        return name.includes(term) || cert.email?.toLowerCase().includes(term);
-      })
+      .filter(({ cert }) =>
+        matchesSearch(search, [cert.first_name, cert.last_name, cert.email])
+      )
       .filter(({ status }) => !groupFilter || status.group === groupFilter);
   }, [certifications, search, groupFilter]);
 

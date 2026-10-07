@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { all, run, get } from '@/lib/db'
 import { requireAuth } from '@/lib/api-auth'
+import { searchClause, SEARCH_FIELDS } from '@/lib/search'
 
 export const dynamic = 'force-dynamic'
 
@@ -42,17 +43,9 @@ export async function GET(request) {
       params.push(parseInt(year, 10))
     }
 
-    if (search) {
-      whereClause += ` AND (
-        g.name ILIKE ? OR
-        s.name ILIKE ? OR
-        pl.first_name ILIKE ? OR
-        pl.last_name ILIKE ? OR
-        CONCAT(pl.first_name, ' ', pl.last_name) ILIKE ?
-      )`
-      const searchTerm = `%${search}%`
-      params.push(searchTerm, searchTerm, searchTerm, searchTerm, searchTerm)
-    }
+    const matching = searchClause(search, SEARCH_FIELDS.groups)
+    whereClause += matching.sql
+    params.push(...matching.params)
 
     const fromClause = `
       FROM groups g

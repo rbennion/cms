@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { all, run, get } from '@/lib/db'
 import { requireAuth } from '@/lib/api-auth'
+import { searchClause, SEARCH_FIELDS } from '@/lib/search'
 
 export const dynamic = 'force-dynamic'
 
@@ -20,11 +21,9 @@ export async function GET(request) {
     `
     const params = []
 
-    if (search) {
-      query += ' AND (s.name ILIKE ? OR s.city ILIKE ?)'
-      const searchTerm = `%${search}%`
-      params.push(searchTerm, searchTerm)
-    }
+    const matching = searchClause(search, SEARCH_FIELDS.schools)
+    query += matching.sql
+    params.push(...matching.params)
 
     query += ' ORDER BY s.name'
 

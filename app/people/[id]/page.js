@@ -712,7 +712,7 @@ export default function PersonDetailPage() {
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="email" className="text-xs">
-                      Email *
+                      Email
                     </Label>
                     <Input
                       id="email"
@@ -729,7 +729,7 @@ export default function PersonDetailPage() {
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="phone" className="text-xs">
-                      Phone *
+                      Phone
                     </Label>
                     <Input
                       id="phone"

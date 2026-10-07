@@ -193,17 +193,10 @@ export async function PUT(request, { params }) {
         first_name !== undefined ? first_name : existing.first_name;
       const updatedLastName =
         last_name !== undefined ? last_name : existing.last_name;
-      const updatedEmail = email !== undefined ? email : existing.email;
-      const updatedPhone = phone !== undefined ? phone : existing.phone;
 
-      if (
-        !updatedFirstName?.trim() ||
-        !updatedLastName?.trim() ||
-        !updatedEmail?.trim() ||
-        !updatedPhone?.trim()
-      ) {
+      if (!updatedFirstName?.trim() || !updatedLastName?.trim()) {
         return NextResponse.json(
-          { error: "Name, email, and phone are required" },
+          { error: "First and last name are required" },
           { status: 400 }
         );
       }

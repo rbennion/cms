@@ -149,6 +149,14 @@ describe("exports", () => {
     }
   });
 
+  it("runs a multi-word search on every export", async () => {
+    const filters = encodeURIComponent(JSON.stringify({ search: "zz nobody 913-549" }));
+    for (const entity of ["people", "companies", "schools", "groups", "donations"]) {
+      const res = await exportRoute.GET(new Request(`http://test/api/export?entityType=${entity}&filters=${filters}`));
+      expect(res.status, `${entity} export failed`).toBe(200);
+    }
+  });
+
   it("narrows the export when a search is applied", async () => {
     // The test database is otherwise empty, so give the export something to cut.
     for (const n of ["Alpha", "Beta", "Gamma"]) {
@@ -161,6 +169,14 @@ describe("exports", () => {
     ).text();
     expect(filtered.split("\n").length).toBeLessThan(all.split("\n").length);
   });
+
+  it("searches the export word by word, the same as the People list", async () => {
+    const filters = encodeURIComponent(JSON.stringify({ search: `Exportable ${TEST_PREFIX}Alp` }));
+    const text = await (await exportRoute.GET(new Request(`http://test/api/export?entityType=people&filters=${filters}`))).text();
+    const rows = text.split("\n").slice(1).filter(Boolean);
+    expect(rows).toHaveLength(1);
+    expect(rows[0]).toContain(`${TEST_PREFIX}Alpha`);
+  });
 });
 
 describe("release notes", () => {
@@ -168,6 +184,6 @@ describe("release notes", () => {
     const res = await releaseNotes.GET(new Request("http://test/api/release-notes"));
     expect(res.status).toBe(200);
     const body = await res.json();
-    expect(JSON.stringify(body)).toContain("0.9.7");
+    expect(JSON.stringify(body)).toContain("0.9.8");
   });
 });

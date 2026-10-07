@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { all, run, get } from "@/lib/db";
 import { requireAuth } from "@/lib/api-auth";
+import { searchClause, SEARCH_FIELDS } from "@/lib/search";
 
 export const dynamic = 'force-dynamic'
 
@@ -33,11 +34,9 @@ export async function GET(request) {
     `;
     const params = [];
 
-    if (search) {
-      query += ` AND (d.note ILIKE ? OR p.first_name ILIKE ? OR p.last_name ILIKE ? OR c.name ILIKE ?)`;
-      const searchTerm = `%${search}%`;
-      params.push(searchTerm, searchTerm, searchTerm, searchTerm);
-    }
+    const matching = searchClause(search, SEARCH_FIELDS.donations);
+    query += matching.sql;
+    params.push(...matching.params);
 
     if (startDate) {
       query += " AND d.date >= ?";
