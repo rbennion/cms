@@ -446,7 +446,7 @@ export function EventRegistrationCard({ groupId, status, setStatus, onShowOption
               </span>
             </div>
             <div className="flex flex-wrap gap-2.5">
-              <Button size="lg" onClick={onShowOptions} className="font-semibold">Show options</Button>
+              <Button size="lg" onClick={onShowOptions} className="font-semibold">Display options</Button>
               <Button size="lg" variant="outline" onClick={onChangeTime}>Change time</Button>
               <Button size="lg" variant="outline" onClick={() => setConfirm("close")} className="border-red-200 text-red-700 hover:bg-red-50 hover:text-red-800">
                 {open ? "Close early" : "Cancel"}
