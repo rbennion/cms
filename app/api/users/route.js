@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { get, all, run } from "@/lib/db";
 import { auth } from "@/lib/auth";
 import bcrypt from "bcryptjs";
+import { normalizeEmail, emailTaken } from "@/lib/users";
 
 export const dynamic = "force-dynamic";
 
@@ -35,7 +36,9 @@ export async function POST(request) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
     }
 
-    const { name, email, password, is_active, is_admin } = await request.json();
+    const body = await request.json();
+    const { name, password, is_active, is_admin } = body;
+    const email = normalizeEmail(body.email);
 
     if (!name || !email || !password) {
       return NextResponse.json(
@@ -44,9 +47,7 @@ export async function POST(request) {
       );
     }
 
-    // Check if email already exists
-    const existing = await all("SELECT id FROM users WHERE email = ?", [email]);
-    if (existing.length > 0) {
+    if (await emailTaken(email)) {
       return NextResponse.json(
         { error: "An account with this email already exists" },
         { status: 400 }

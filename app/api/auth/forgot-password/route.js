@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
-import { get, run } from "@/lib/db";
+import { run } from "@/lib/db";
 import crypto from "crypto";
 import { sendPasswordReset } from "@/lib/email";
+import { findUserByEmail } from "@/lib/users";
 
 export async function POST(request) {
   try {
@@ -12,10 +13,7 @@ export async function POST(request) {
     }
 
     // Find user
-    const user = await get(
-      "SELECT id, email, name FROM users WHERE email = ?",
-      [email]
-    );
+    const user = await findUserByEmail(email);
 
     // Always return success to prevent email enumeration
     if (!user) {

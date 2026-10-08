@@ -4,6 +4,14 @@ All notable changes to the Fight Club CRM application will be documented in this
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.9.9] - 2026-10-07
+
+### Fixed
+- Login emails are now one account however they are capitalized. Adding or registering an account whose email matches an existing one in different capitals (Brad@x.com vs brad@x.com) is refused, and so is changing an account to an email another account already uses. Sign-in and forgot password accept the email in any capitals. New and edited login emails are saved in lower case.
+
+### Operations
+- Migration 013 adds a database rule that refuses two login accounts whose emails differ only by capitalization. Additive only. Applies automatically during the Vercel build. Production was checked beforehand: no existing accounts clash.
+
 ## [0.9.8] - 2026-10-07
 
 ### Changed

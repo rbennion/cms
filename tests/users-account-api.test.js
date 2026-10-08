@@ -16,6 +16,7 @@ const register = await import("@/app/api/auth/register/route.js");
 const forgot = await import("@/app/api/auth/forgot-password/route.js");
 const reset = await import("@/app/api/auth/reset-password/route.js");
 const changePassword = await import("@/app/api/account/change-password/route.js");
+const { findUserByEmail } = await import("@/lib/users");
 const { run, query, get } = await import("@/lib/db");
 const bcrypt = (await import("bcryptjs")).default;
 
@@ -66,6 +67,65 @@ describe("registering an account", () => {
       name: "Someone", email: "zztest.new@example.invalid", password: "another-password",
     }));
     expect(res.status).toBeGreaterThanOrEqual(400);
+  });
+
+  it("will not register the same address in different capitals", async () => {
+    const res = await register.POST(json("http://test/x", "POST", {
+      name: "Someone", email: " ZZTest.New@Example.Invalid ", password: "another-password",
+    }));
+    expect(res.status).toBe(400);
+  });
+
+  it("stores the address trimmed and in lower case", async () => {
+    const res = await register.POST(json("http://test/x", "POST", {
+      name: `${TEST_PREFIX} Mixed Case`, email: " ZZTest.Mixed@Example.Invalid ", password: "a-good-password",
+    }));
+    expect(res.status).toBeLessThan(300);
+    const row = await get("SELECT email FROM users WHERE LOWER(email) = ?", ["zztest.mixed@example.invalid"]);
+    expect(row.email).toBe("zztest.mixed@example.invalid");
+  });
+});
+
+describe("one account per email, whatever the capitals", () => {
+  it("an administrator cannot add an account whose address differs only in capitals", async () => {
+    const res = await users.POST(json("http://test/api/users", "POST", {
+      name: "Someone", email: "ZZTest.Admin@Example.Invalid", password: "a-good-password",
+    }));
+    expect(res.status).toBe(400);
+  });
+
+  it("an account cannot be changed to an address another account uses", async () => {
+    const res = await userOne.PUT(
+      json("http://test/x", "PUT", {
+        name: `${TEST_PREFIX} New Person`, email: "ZZTEST.ADMIN@example.invalid",
+        is_active: false, is_admin: false,
+      }),
+      params(targetId)
+    );
+    expect(res.status).toBe(400);
+    const row = await get("SELECT email FROM users WHERE id = ?", [targetId]);
+    expect(row.email).toBe("zztest.new@example.invalid");
+  });
+
+  it("sign-in and password reset find the account whatever the capitals", async () => {
+    // Both look accounts up through findUserByEmail.
+    const user = await findUserByEmail("  ZZTest.Admin@EXAMPLE.invalid ");
+    expect(user?.id).toBe(adminId);
+  });
+
+  it("finds an account stored before addresses were lower-cased", async () => {
+    await run(
+      "INSERT INTO users (email, password_hash, name) VALUES (?, ?, ?)",
+      ["zztest.Legacy@example.invalid", "x", `${TEST_PREFIX} Legacy`]
+    );
+    expect(await findUserByEmail("zztest.legacy@example.invalid")).toBeTruthy();
+  });
+
+  it("the database itself refuses a second account differing only in capitals", async () => {
+    await expect(
+      run("INSERT INTO users (email, password_hash, name) VALUES (?, ?, ?)",
+        ["zztest.LEGACY@example.invalid", "x", `${TEST_PREFIX} Legacy Twin`])
+    ).rejects.toThrow(/duplicate|unique/i);
   });
 });
 

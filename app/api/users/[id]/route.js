@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { get, all, run } from "@/lib/db";
 import { auth } from "@/lib/auth";
+import { normalizeEmail, emailTaken } from "@/lib/users";
 
 export const dynamic = "force-dynamic";
 
@@ -51,8 +52,20 @@ export async function PUT(request, { params }) {
     }
 
     const { id } = await params;
-    const { name, email, is_active, is_admin, permissions } =
-      await request.json();
+    const body = await request.json();
+    const { name, is_active, is_admin, permissions } = body;
+    const email = normalizeEmail(body.email);
+
+    if (!email) {
+      return NextResponse.json({ error: "Email is required" }, { status: 400 });
+    }
+
+    if (await emailTaken(email, id)) {
+      return NextResponse.json(
+        { error: "An account with this email already exists" },
+        { status: 400 }
+      );
+    }
 
     // Update user
     const user = await get(
