@@ -22,6 +22,12 @@ import { MultiSelectSearch } from "@/components/ui/multi-select-search";
 import { NewMemberForm } from "@/components/groups/new-member-form";
 import { ConfirmDialog } from "@/components/shared/confirm-dialog";
 import { DuplicatePersonDialog } from "@/components/people/duplicate-person-dialog";
+import {
+  useEventRegistration,
+  EventRegistrationButton,
+  EventRegistrationCard,
+  EventRegistrationFlow,
+} from "@/components/groups/event-registration";
 import { useToast } from "@/components/ui/use-toast";
 import {
   Pencil,
@@ -46,6 +52,8 @@ export default function GroupDetailPage() {
   const [loading, setLoading] = useState(true);
   const [showDelete, setShowDelete] = useState(false);
   const [memberConflict, setMemberConflict] = useState(null);
+  const [registration, setRegistration] = useEventRegistration(params.id);
+  const [registrationStep, setRegistrationStep] = useState(null);
   const [exportingRoster, setExportingRoster] = useState(false);
   const [isEditingInfo, setIsEditingInfo] = useState(false);
   const [groupData, setGroupData] = useState({
@@ -508,6 +516,14 @@ export default function GroupDetailPage() {
           >
             <Trash2 className="h-4 w-4" />
           </Button>
+          <EventRegistrationButton
+            status={registration}
+            onClick={() =>
+              setRegistrationStep(
+                registration?.state === "open" || registration?.state === "scheduled" ? "options" : "setup"
+              )
+            }
+          />
           <Button variant="outline" onClick={handleExportRoster} disabled={exportingRoster}>
             <Download className="mr-2 h-4 w-4" />
             {exportingRoster ? "Exporting..." : "Export Roster"}
@@ -693,6 +709,14 @@ export default function GroupDetailPage() {
 
           {/* Right Column */}
           <div className="lg:col-span-2 space-y-6">
+            <EventRegistrationCard
+              groupId={group.id}
+              status={registration}
+              setStatus={setRegistration}
+              onShowOptions={() => setRegistrationStep("options")}
+              onChangeTime={() => setRegistrationStep("setup")}
+            />
+
             {/* Primary Leader Card */}
             <Card>
               <CardHeader className="flex flex-row items-center justify-between">
@@ -1245,6 +1269,14 @@ export default function GroupDetailPage() {
           </div>
         </div>
       </div>
+
+      <EventRegistrationFlow
+        group={group}
+        status={registration}
+        setStatus={setRegistration}
+        step={registrationStep}
+        setStep={setRegistrationStep}
+      />
 
       <DuplicatePersonDialog
         conflict={memberConflict}

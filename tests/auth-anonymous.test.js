@@ -59,6 +59,9 @@ const routes = [
   ["/api/schools/[id]/people", "@/app/api/schools/[id]/people/route.js", ["POST", "DELETE"]],
   ["/api/groups/[id]/students", "@/app/api/groups/[id]/students/route.js", ["POST"]],
   ["/api/groups/[id]/parents", "@/app/api/groups/[id]/parents/route.js", ["POST"]],
+  ["/api/groups/[id]/registration", "@/app/api/groups/[id]/registration/route.js", ["GET", "PUT", "DELETE"]],
+  ["/api/groups/[id]/registration/reset", "@/app/api/groups/[id]/registration/reset/route.js", ["POST"]],
+  ["/api/groups/[id]/registration/entries/[entryId]", "@/app/api/groups/[id]/registration/entries/[entryId]/route.js", ["PATCH"]],
 ];
 
 describe("a stranger is turned away", () => {

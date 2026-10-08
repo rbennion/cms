@@ -36,7 +36,8 @@ export function Sidebar() {
   if (
     pathname === "/login" ||
     pathname === "/register" ||
-    pathname?.startsWith("/sign/")
+    pathname?.startsWith("/sign/") ||
+    pathname?.startsWith("/event/")
   ) {
     return null;
   }

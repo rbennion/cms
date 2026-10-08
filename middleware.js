@@ -11,6 +11,10 @@ const publicRoutes = [
   "/api/settings/logo",
   "/sign",
   "/api/sign",
+  // Event registration: reached by scanning a group's QR code. Works only
+  // during the window staff set, and shows nothing but the group's name.
+  "/event/",
+  "/api/event/",
   // Reachable without signing in so monitoring can check it. It answers only
   // "working" or "not working" and reveals nothing about the system.
   "/api/health",

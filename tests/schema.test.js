@@ -54,6 +54,8 @@ const WRITTEN_COLUMNS = {
   notes: ["title", "content", "date", "entity_type", "entity_id"],
   waivers: ["person_id", "token_hash", "status", "sent_to_email", "expires_at"],
   users: ["email", "password_hash", "name", "is_active", "is_admin"],
+  event_registrations: ["group_id", "token_salt", "token_hash", "starts_at", "ends_at", "set_by", "updated_at"],
+  event_registration_entries: ["registration_id", "person_id", "role", "window_starts_at", "needs_review", "reviewed_at"],
 };
 
 describe("database has every column the app writes", () => {
