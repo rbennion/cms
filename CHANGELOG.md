@@ -4,6 +4,19 @@ All notable changes to the Fight Club CRM application will be documented in this
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.10.0] - 2026-10-08
+
+### Added
+- Event registration. On a Group, click Event Registration and set a date, start time and end time (4 hours at most). Students scan the group's QR code with their phone and register themselves, with the option to add one or more parents. Everyone lands in that group automatically: students with the Student role, parents with the Parent role and linked to their student.
+- Four ways to show the QR code: show the registration screen on this device (full screen), show it on another device (a link to open on an iPad or another computer, no sign-in needed), download it as an image, or print it on one landscape page.
+- Each group has its own QR code. It only works during the registration time staff set, and stays the same from event to event, so a printout can be reused for that group. Reset QR code issues a new one if a code gets passed around.
+- The registration form asks for name, email and phone (required) and Instagram and Facebook (optional), for the student and any parents.
+- Someone who registers with an email already in the CRM under the same name is matched to their existing record, and only blank details are filled in. If the email belongs to someone with a different name (for example a student using a parent's email), the student gets their own record and staff see a note on the Group page to check it.
+- While registration is set, the Group page shows its time, how many students have registered, and buttons to display options, change the time or close early.
+
+### Operations
+- Migration 014 adds two tables for event registration. Additive only. Applies automatically during the Vercel build.
+
 ## [0.9.10] - 2026-10-07
 
 ### Added
