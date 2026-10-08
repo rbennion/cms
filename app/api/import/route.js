@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { get, all, run } from "@/lib/db";
 import { auth } from "@/lib/auth";
+import { findEmailOwner } from "@/lib/people-server";
 
 export const dynamic = "force-dynamic";
 
@@ -88,7 +89,9 @@ export async function POST(request) {
             [firstName, lastName]
           );
 
-          if (existing.length > 0) {
+          // No two people share an email, so a row whose email is already on
+          // someone is skipped too.
+          if (existing.length > 0 || (await findEmailOwner(row[mapping.email]))) {
             skipped++;
             continue;
           }

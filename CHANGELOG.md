@@ -4,6 +4,15 @@ All notable changes to the Fight Club CRM application will be documented in this
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.9.10] - 2026-10-07
+
+### Added
+- No two people can share an email. Adding a person, or changing someone's email, to an email that is already on another person is refused, and a pop-up names who has it with a link to their record. Capitals and extra spaces don't count as a difference. Applies to the New Person form, the Contact Information card, and adding a new student or parent from a Group. Spreadsheet import skips a row whose email is already in use.
+- A person added with no email is checked against everyone's name and phone number. If someone matches, a pop-up lists them with links, and staff can cancel or choose Create anyway.
+
+### Changed
+- People who already shared an email before this release are left as they are and can still be edited.
+
 ## [0.9.9] - 2026-10-07
 
 ### Fixed

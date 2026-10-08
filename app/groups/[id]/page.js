@@ -21,6 +21,7 @@ import {
 import { MultiSelectSearch } from "@/components/ui/multi-select-search";
 import { NewMemberForm } from "@/components/groups/new-member-form";
 import { ConfirmDialog } from "@/components/shared/confirm-dialog";
+import { DuplicatePersonDialog } from "@/components/people/duplicate-person-dialog";
 import { useToast } from "@/components/ui/use-toast";
 import {
   Pencil,
@@ -44,6 +45,7 @@ export default function GroupDetailPage() {
   const [group, setGroup] = useState(null);
   const [loading, setLoading] = useState(true);
   const [showDelete, setShowDelete] = useState(false);
+  const [memberConflict, setMemberConflict] = useState(null);
   const [exportingRoster, setExportingRoster] = useState(false);
   const [isEditingInfo, setIsEditingInfo] = useState(false);
   const [groupData, setGroupData] = useState({
@@ -330,14 +332,28 @@ export default function GroupDetailPage() {
     ];
   };
 
-  const handleCreateMember = async (kind, form, relatedIds) => {
+  // allowDuplicate is set when someone chooses "Create anyway" on a
+  // possible-duplicate warning.
+  const handleCreateMember = async (kind, form, relatedIds, allowDuplicate = false) => {
     const relatedKey = kind === "student" ? "parent_ids" : "student_ids";
     try {
       const res = await fetch(`/api/groups/${params.id}/${kind}s`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ new_person: form, [relatedKey]: relatedIds }),
+        body: JSON.stringify({
+          new_person: form,
+          [relatedKey]: relatedIds,
+          ...(allowDuplicate && { allow_duplicate: true }),
+        }),
       });
+      if (res.status === 409) {
+        const conflict = await res.json();
+        setMemberConflict({
+          ...conflict,
+          retry: () => handleCreateMember(kind, form, relatedIds, true),
+        });
+        return;
+      }
       if (!res.ok) {
         const body = await res.json().catch(() => ({}));
         throw new Error(body.error || `Failed to create ${kind}`);
@@ -1229,6 +1245,16 @@ export default function GroupDetailPage() {
           </div>
         </div>
       </div>
+
+      <DuplicatePersonDialog
+        conflict={memberConflict}
+        onCancel={() => setMemberConflict(null)}
+        onCreateAnyway={() => {
+          const { retry } = memberConflict;
+          setMemberConflict(null);
+          retry();
+        }}
+      />
 
       <ConfirmDialog
         open={showDelete}

@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server'
 import { all, get, run } from '@/lib/db'
 import { requireAuth } from '@/lib/api-auth'
 import { linkFamily } from '@/lib/family'
-import { validateNewPerson, insertPerson } from '@/lib/people-server'
+import { validateNewPerson, insertPerson, checkNewPersonDuplicates } from '@/lib/people-server'
 
 export const dynamic = 'force-dynamic'
 
@@ -58,6 +58,12 @@ export async function POST(request, { params }) {
       const invalid = validateNewPerson(new_person)
       if (invalid) {
         return NextResponse.json({ error: invalid }, { status: 400 })
+      }
+      const duplicate = await checkNewPersonDuplicates(new_person, {
+        allowDuplicate: body.allow_duplicate === true,
+      })
+      if (duplicate) {
+        return NextResponse.json(duplicate, { status: 409 })
       }
       for (const otherId of parent_ids) {
         const exists = await get('SELECT id FROM people WHERE id = ?', [otherId])

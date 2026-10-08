@@ -47,6 +47,74 @@ describe("creating a person", () => {
   });
 });
 
+describe("duplicate people", () => {
+  // Ada (created above) has zztest.ada@example.invalid and 555-0101.
+  const create = (body) => list.POST(json("http://test/api/people", "POST", body));
+  let secondAdaId;
+
+  it("refuses a second person with the same email, whatever the capitals or spaces", async () => {
+    const res = await create({
+      first_name: `${TEST_PREFIX}Other`, last_name: "Person", email: " ZZTest.Ada@Example.Invalid ",
+    });
+    expect(res.status).toBe(409);
+    const body = await res.json();
+    expect(body.code).toBe("email_taken");
+    expect(body.existing.id).toBe(personId);
+  });
+
+  it("warns when a new person with no email has the same name", async () => {
+    const res = await create({ first_name: `${TEST_PREFIX}Ada`, last_name: " lovelace " });
+    expect(res.status).toBe(409);
+    const body = await res.json();
+    expect(body.code).toBe("possible_duplicate");
+    expect(body.matches.map((m) => m.id)).toContain(personId);
+  });
+
+  it("warns when a new person with no email has the same phone, however punctuated", async () => {
+    const res = await create({ first_name: `${TEST_PREFIX}Someone`, last_name: "Else", phone: "(555) 0101" });
+    expect(res.status).toBe(409);
+    expect((await res.json()).matches.map((m) => m.id)).toContain(personId);
+  });
+
+  it("creates them anyway when staff confirm", async () => {
+    const res = await create({ first_name: `${TEST_PREFIX}Ada`, last_name: "Lovelace", allow_duplicate: true });
+    expect(res.status).toBe(201);
+  });
+
+  it("does not question a new person who has an email of their own", async () => {
+    const res = await create({
+      first_name: `${TEST_PREFIX}Ada`, last_name: "Lovelace", email: "zztest.ada2@example.invalid",
+    });
+    expect(res.status).toBe(201);
+    secondAdaId = (await res.json()).id;
+  });
+
+  it("refuses changing someone's email to one another person has", async () => {
+    const res = await one.PUT(
+      json(`http://test/api/people/${secondAdaId}`, "PUT", {
+        first_name: `${TEST_PREFIX}Ada`, last_name: "Lovelace", email: "ZZTEST.ADA@example.invalid",
+      }),
+      params(secondAdaId)
+    );
+    expect(res.status).toBe(409);
+    expect((await res.json()).existing.id).toBe(personId);
+  });
+
+  it("still lets people who already shared an email before this rule be edited", async () => {
+    const [, twin] = await query(
+      `INSERT INTO people (first_name, last_name, email) VALUES (?, ?, ?), (?, ?, ?) RETURNING id`,
+      [`${TEST_PREFIX}Twin`, "One", "zztest.shared@example.invalid", `${TEST_PREFIX}Twin`, "Two", "zztest.shared@example.invalid"]
+    );
+    const res = await one.PUT(
+      json(`http://test/api/people/${twin.id}`, "PUT", {
+        first_name: `${TEST_PREFIX}Twin`, last_name: "Two", email: "ZZTest.Shared@example.invalid", phone: "555-0105",
+      }),
+      params(twin.id)
+    );
+    expect(res.status).toBeLessThan(300);
+  });
+});
+
 describe("reading people", () => {
   it("lists with a total and a page of rows", async () => {
     const res = await list.GET(new Request("http://test/api/people?limit=5"));

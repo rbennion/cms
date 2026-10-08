@@ -19,11 +19,13 @@ import { useToast } from "@/components/ui/use-toast";
 import { MultiSelectSearch } from "@/components/ui/multi-select-search";
 import { AddressFields } from "@/components/shared/address-fields";
 import { FormActions } from "@/components/shared/form-actions";
+import { DuplicatePersonDialog } from "@/components/people/duplicate-person-dialog";
 
 export function PersonForm({ person, isEdit = false }) {
   const router = useRouter();
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
+  const [conflict, setConflict] = useState(null);
   const [schools, setSchools] = useState([]);
   const [companies, setCompanies] = useState([]);
   const [roles, setRoles] = useState([]);
@@ -82,8 +84,14 @@ export function PersonForm({ person, isEdit = false }) {
     }
   };
 
-  const handleSubmit = async (e) => {
+  const handleSubmit = (e) => {
     e.preventDefault();
+    save();
+  };
+
+  // allowDuplicate is set when someone chooses "Create anyway" on a
+  // possible-duplicate warning.
+  const save = async (allowDuplicate = false) => {
     setLoading(true);
 
     try {
@@ -94,6 +102,7 @@ export function PersonForm({ person, isEdit = false }) {
         ...formData,
         company_ids: selectedCompanies.map((c) => c.id),
         school_ids: selectedSchools.map((s) => s.id),
+        ...(allowDuplicate && { allow_duplicate: true }),
       };
 
       const res = await fetch(url, {
@@ -101,6 +110,11 @@ export function PersonForm({ person, isEdit = false }) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(submitData),
       });
+
+      if (res.status === 409) {
+        setConflict(await res.json());
+        return;
+      }
 
       if (!res.ok) {
         const error = await res.json();
@@ -354,6 +368,15 @@ export function PersonForm({ person, isEdit = false }) {
           </CardContent>
         </Card>
       )}
+
+      <DuplicatePersonDialog
+        conflict={conflict}
+        onCancel={() => setConflict(null)}
+        onCreateAnyway={() => {
+          setConflict(null);
+          save(true);
+        }}
+      />
 
       <FormActions
         loading={loading}

@@ -165,6 +165,30 @@ describe("creating a student or parent from a group", () => {
     expect(fam).toEqual([expect.objectContaining({ id: newStudentId, relationship: "child" })]);
   });
 
+  it("refuses a new student whose email is already in use", async () => {
+    const res = await students.POST(
+      json("http://test/x", "POST", {
+        new_person: { first_name: `${TEST_PREFIX}Copy`, last_name: "Student", email: "ZZTest.NewStudent@example.invalid" },
+      }),
+      params(groupId)
+    );
+    expect(res.status).toBe(409);
+    expect((await res.json()).existing.id).toBe(newStudentId);
+  });
+
+  it("warns about a new parent with no email who matches someone's name, then creates them when confirmed", async () => {
+    const newParent = { first_name: `${TEST_PREFIX}New`, last_name: "Parent" };
+    const warned = await parents.POST(json("http://test/x", "POST", { new_person: newParent }), params(groupId));
+    expect(warned.status).toBe(409);
+    expect((await warned.json()).matches.map((m) => m.id)).toContain(newParentId);
+
+    const confirmed = await parents.POST(
+      json("http://test/x", "POST", { new_person: newParent, allow_duplicate: true }),
+      params(groupId)
+    );
+    expect(confirmed.status).toBe(201);
+  });
+
   it("refuses a new person missing a last name", async () => {
     const res = await students.POST(
       json("http://test/x", "POST", {

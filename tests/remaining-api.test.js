@@ -192,6 +192,26 @@ describe("bringing records in from a spreadsheet", () => {
     expect(res.status).toBeGreaterThanOrEqual(400);
   });
 
+  it("skips a row whose email is already on someone", async () => {
+    await run("INSERT INTO people (first_name, last_name, email) VALUES (?, ?, ?)",
+      [`${TEST_PREFIX}Existing`, "Importee", "zztest.importee@example.invalid"]);
+    const csv = [
+      "First,Last,Email",
+      `${TEST_PREFIX}Renamed,Importee,ZZTest.Importee@example.invalid`,
+      `${TEST_PREFIX}Fresh,Importee,zztest.fresh@example.invalid`,
+    ].join("\n");
+    const form = new FormData();
+    form.set("file", new Blob([csv], { type: "text/csv" }), "people.csv");
+    form.set("entityType", "people");
+    form.set("mapping", JSON.stringify({ first_name: "First", last_name: "Last", email: "Email" }));
+
+    const res = await importRoute.POST(new Request("http://test/x", { method: "POST", body: form }));
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.imported).toBe(1);
+    expect(body.skipped).toBe(1);
+  });
+
   it("refuses a record type it does not know", async () => {
     const res = await importRoute.POST(json("http://test/x", "POST", {
       entityType: "unicorns", rows: [{ name: "x" }],

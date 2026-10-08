@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { all, run, get } from "@/lib/db";
 import { requireAuth } from "@/lib/api-auth";
 import { searchClause, SEARCH_FIELDS } from "@/lib/search";
+import { checkNewPersonDuplicates } from "@/lib/people-server";
 
 export const dynamic = 'force-dynamic'
 
@@ -137,6 +138,13 @@ export async function POST(request) {
         { error: "First and last name are required" },
         { status: 400 }
       );
+    }
+
+    const duplicate = await checkNewPersonDuplicates(body, {
+      allowDuplicate: body.allow_duplicate === true,
+    });
+    if (duplicate) {
+      return NextResponse.json(duplicate, { status: 409 });
     }
 
     const result = await run(

@@ -13,13 +13,31 @@ test.describe("everyday record keeping", () => {
     await expect(page.getByText("Findable").first()).toBeVisible({ timeout: 10_000 });
   });
 
-  test("the create form insists on an email and a phone number", async ({ page }) => {
+  test("the create form insists on a first and last name", async ({ page }) => {
+    await page.goto("/people/new");
+    await page.getByLabel(/first name/i).fill("NoLastName");
+    await page.getByRole("button", { name: /create person/i }).click();
+    // It must not quietly create a half-record.
+    await expect(page).toHaveURL(/\/people\/new/);
+  });
+
+  test("a person can be created with no email or phone", async ({ page }) => {
     await page.goto("/people/new");
     await page.getByLabel(/first name/i).fill("NoContact");
     await page.getByLabel(/last name/i).fill("Person");
     await page.getByRole("button", { name: /create person/i }).click();
-    // It must not quietly create a half-record.
-    await expect(page).toHaveURL(/\/people\/new/);
+    await expect(page).toHaveURL(/\/people\/\d+/, { timeout: 20_000 });
+  });
+
+  test("a second person with the same name is questioned before being created", async ({ page }) => {
+    await createPerson(page, "Twice", "Entered");
+    await page.goto("/people/new");
+    await page.getByLabel(/first name/i).fill("Twice");
+    await page.getByLabel(/last name/i).fill("Entered");
+    await page.getByRole("button", { name: /create person/i }).click();
+    await expect(page.getByText(/may already exist/i)).toBeVisible({ timeout: 10_000 });
+    await page.getByRole("button", { name: /create anyway/i }).click();
+    await expect(page).toHaveURL(/\/people\/\d+/, { timeout: 20_000 });
   });
 
   test("a note written on the create form is saved with the person", async ({ page }) => {

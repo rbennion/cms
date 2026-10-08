@@ -3,6 +3,7 @@ import { get, run, all } from "@/lib/db";
 import { attachBgExpiry } from "@/lib/certifications-server";
 import { requireAuth } from "@/lib/api-auth";
 import { FAMILY_MEMBERS_SQL, linkFamily, unlinkFamily } from "@/lib/family";
+import { findEmailOwner, sameEmail, emailTakenConflict } from "@/lib/people-server";
 
 export const dynamic = 'force-dynamic'
 
@@ -199,6 +200,15 @@ export async function PUT(request, { params }) {
           { error: "First and last name are required" },
           { status: 400 }
         );
+      }
+
+      // Only a changed email is checked, so records that already share an
+      // email from before this rule can still be edited.
+      if (email !== undefined && !sameEmail(email, existing.email)) {
+        const owner = await findEmailOwner(email, id);
+        if (owner) {
+          return NextResponse.json(emailTakenConflict(owner), { status: 409 });
+        }
       }
 
       await run(

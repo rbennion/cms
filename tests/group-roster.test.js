@@ -15,7 +15,7 @@ const groups = await import("@/app/api/groups/route.js");
 const students = await import("@/app/api/groups/[id]/students/route.js");
 const parents = await import("@/app/api/groups/[id]/parents/route.js");
 const roster = await import("@/app/api/groups/[id]/roster/route.js");
-const { run } = await import("@/lib/db");
+const { run, query } = await import("@/lib/db");
 
 const person = (id, first, last, email, phone) => ({ id, first_name: first, last_name: last, email, phone });
 
@@ -99,7 +99,12 @@ describe("GET /api/groups/[id]/roster", () => {
 
     const kid = await createPerson("Kid", "zztest.kid@example.invalid");
     const loner = await createPerson("Loner", "zztest.loner@example.invalid");
-    const mom = await createPerson("Mom", "zztest.kid@example.invalid");
+    // A parent sharing the student's email can no longer be created through
+    // the app, but records from before that rule can, so insert one directly.
+    const [{ id: mom }] = await query(
+      "INSERT INTO people (first_name, last_name, email, phone) VALUES (?, ?, ?, ?) RETURNING id",
+      [`${TEST_PREFIX}Ros`, "Mom", "zztest.kid@example.invalid", "555-0300"]
+    );
     const oldLink = await createPerson("OldLink", "zztest.oldlink@example.invalid");
     const stray = await createPerson("Stray", "zztest.stray@example.invalid");
 

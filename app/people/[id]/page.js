@@ -186,7 +186,10 @@ export default function PersonDetailPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(profileData),
       });
-      if (!res.ok) throw new Error("Failed to update profile");
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        throw new Error(body.error || "Failed to update profile");
+      }
       toast({ title: "Profile updated successfully" });
       setIsEditingProfile(false);
       fetchPerson();
