@@ -4,6 +4,22 @@ All notable changes to the Fight Club CRM application will be documented in this
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [0.10.1] - 2026-11-12
+
+### Added
+- Companies and schools have a phone number. Enter it on the Add Company and Add School forms or in the information card on the detail page, where it shows as a tap-to-call link. It is also a column in company and school imports and exports.
+- The group roster export (Export Roster on a Group) now includes each student's and parent's Instagram and Facebook handles.
+
+### Changed
+- A school's People list no longer shows parents and students. Someone who is also a teacher, staff member, volunteer, FC leader or group leader still shows, even if they are a parent.
+- Request Waiver now opens with a blank email, so staff type the parent or guardian's address each time instead of sending to the email on the person's record.
+
+### Fixed
+- Editing a company's information card no longer removes its Donor Organization status.
+
+### Operations
+- Migration 015 adds a phone column to companies and schools. Additive only. Applies automatically during the Vercel build.
+
 ## [0.10.0] - 2026-10-08
 
 ### Added
