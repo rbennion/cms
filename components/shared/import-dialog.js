@@ -45,6 +45,7 @@ const FIELD_OPTIONS = {
     { value: "city", label: "City" },
     { value: "state", label: "State" },
     { value: "zip", label: "Zip" },
+    { value: "phone", label: "Phone" },
     { value: "website", label: "Website" },
   ],
   schools: [
@@ -53,6 +54,7 @@ const FIELD_OPTIONS = {
     { value: "city", label: "City" },
     { value: "state", label: "State" },
     { value: "zip", label: "Zip" },
+    { value: "phone", label: "Phone" },
   ],
   groups: [
     { value: "name", label: "Group Name", required: true },
@@ -107,7 +109,7 @@ const CSV_TEMPLATES = {
     ],
   },
   companies: {
-    headers: ["name", "address", "city", "state", "zip", "website"],
+    headers: ["name", "address", "city", "state", "zip", "phone", "website"],
     sampleRows: [
       [
         "Acme Corporation",
@@ -115,6 +117,7 @@ const CSV_TEMPLATES = {
         "Houston",
         "TX",
         "77001",
+        "555-200-1000",
         "https://acme.example.com",
       ],
       [
@@ -123,20 +126,22 @@ const CSV_TEMPLATES = {
         "San Antonio",
         "TX",
         "78201",
+        "555-200-2000",
         "https://techsolutions.example.com",
       ],
     ],
   },
   schools: {
-    headers: ["name", "address", "city", "state", "zip"],
+    headers: ["name", "address", "city", "state", "zip", "phone"],
     sampleRows: [
-      ["Lincoln Elementary", "500 School Rd", "Austin", "TX", "78702"],
+      ["Lincoln Elementary", "500 School Rd", "Austin", "TX", "78702", "555-300-1000"],
       [
         "Washington Middle School",
         "600 Education Ave",
         "Round Rock",
         "TX",
         "78664",
+        "555-300-2000",
       ],
     ],
   },

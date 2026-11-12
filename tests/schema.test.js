@@ -51,6 +51,8 @@ const WRITTEN_COLUMNS = {
     "updated_at",
   ],
   donations: ["amount", "date", "note", "person_id", "company_id"],
+  companies: ["name", "address", "city", "state", "zip", "phone", "website", "is_donor", "updated_at"],
+  schools: ["name", "address", "city", "state", "zip", "phone"],
   notes: ["title", "content", "date", "entity_type", "entity_id"],
   waivers: ["person_id", "token_hash", "status", "sent_to_email", "expires_at"],
   users: ["email", "password_hash", "name", "is_active", "is_admin"],

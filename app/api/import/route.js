@@ -163,14 +163,15 @@ export async function POST(request) {
           }
 
           await run(
-            `INSERT INTO companies (name, address, city, state, zip, website)
-            VALUES (?, ?, ?, ?, ?, ?)`,
+            `INSERT INTO companies (name, address, city, state, zip, phone, website)
+            VALUES (?, ?, ?, ?, ?, ?, ?)`,
             [
               name,
               row[mapping.address] || null,
               row[mapping.city] || null,
               row[mapping.state] || null,
               row[mapping.zip] || null,
+              row[mapping.phone] || null,
               row[mapping.website] || null,
             ]
           );
@@ -195,14 +196,15 @@ export async function POST(request) {
           }
 
           await run(
-            `INSERT INTO schools (name, address, city, state, zip)
-            VALUES (?, ?, ?, ?, ?)`,
+            `INSERT INTO schools (name, address, city, state, zip, phone)
+            VALUES (?, ?, ?, ?, ?, ?)`,
             [
               name,
               row[mapping.address] || null,
               row[mapping.city] || null,
               row[mapping.state] || null,
               row[mapping.zip] || null,
+              row[mapping.phone] || null,
             ]
           );
           imported++;

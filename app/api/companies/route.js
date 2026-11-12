@@ -71,20 +71,21 @@ export async function POST(request) {
     if (error) return error
 
     const body = await request.json();
-    const { name, address, city, state, zip, website, is_donor } = body;
+    const { name, address, city, state, zip, phone, website, is_donor } = body;
 
     if (!name) {
       return NextResponse.json({ error: "Name is required" }, { status: 400 });
     }
 
     const result = await run(
-      "INSERT INTO companies (name, address, city, state, zip, website, is_donor) VALUES (?, ?, ?, ?, ?, ?, ?)",
+      "INSERT INTO companies (name, address, city, state, zip, phone, website, is_donor) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
       [
         name,
         address || null,
         city || null,
         state || null,
         zip || null,
+        phone || null,
         website || null,
         is_donor ? 1 : 0,
       ],

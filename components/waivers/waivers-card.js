@@ -20,22 +20,18 @@ import { deriveWaiverStatus } from "@/lib/waivers";
 import { MAX_UPLOAD_BYTES, fileTooLargeMessage, uploadDocument } from "@/lib/client-upload";
 import { WaiverStatusLine, WaiverSteps } from "@/components/waivers/waiver-status";
 
-export function WaiversCard({ personId, defaultEmail }) {
+export function WaiversCard({ personId }) {
   const { toast } = useToast();
   const [waivers, setWaivers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showRequest, setShowRequest] = useState(false);
-  const [email, setEmail] = useState(defaultEmail || "");
+  const [email, setEmail] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [uploading, setUploading] = useState(false);
   const paperFileRef = useRef(null);
   // In-person signing: { waiver_id, signing_url, qr } while the dialog is open.
   const [inPerson, setInPerson] = useState(null);
   const [startingInPerson, setStartingInPerson] = useState(false);
-
-  useEffect(() => {
-    setEmail(defaultEmail || "");
-  }, [defaultEmail]);
 
   async function load() {
     setLoading(true);
@@ -222,7 +218,15 @@ export function WaiversCard({ personId, defaultEmail }) {
               )}
               Sign in Person
             </Button>
-            <Button size="sm" onClick={() => setShowRequest(true)}>
+            <Button
+              size="sm"
+              onClick={() => {
+                // Starts blank every time: staff type the guardian's address
+                // rather than sending to whatever email is on the person.
+                setEmail("");
+                setShowRequest(true);
+              }}
+            >
               <Send className="mr-2 h-4 w-4" /> Request Waiver
             </Button>
           </div>

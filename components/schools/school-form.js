@@ -20,6 +20,7 @@ export function SchoolForm({ school, isEdit = false }) {
     city: school?.city || "",
     state: school?.state || "",
     zip: school?.zip || "",
+    phone: school?.phone || "",
   });
 
   const handleSubmit = async (e) => {
@@ -75,6 +76,17 @@ export function SchoolForm({ school, isEdit = false }) {
                 setFormData({ ...formData, name: e.target.value })
               }
               required
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="phone">Phone</Label>
+            <Input
+              id="phone"
+              type="tel"
+              value={formData.phone}
+              onChange={(e) =>
+                setFormData({ ...formData, phone: e.target.value })
+              }
             />
           </div>
         </CardContent>

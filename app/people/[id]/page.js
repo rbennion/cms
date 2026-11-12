@@ -1386,10 +1386,7 @@ export default function PersonDetailPage() {
               </CardContent>
             </Card>
 
-            <WaiversCard
-              personId={person.id}
-              defaultEmail={person.guardian_email || person.email || ""}
-            />
+            <WaiversCard personId={person.id} />
 
             {/* Notes Section */}
             <div>

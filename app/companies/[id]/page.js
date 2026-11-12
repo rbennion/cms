@@ -20,6 +20,7 @@ import {
   Trash2,
   MapPin,
   Globe,
+  Phone,
   Users,
   DollarSign,
   ExternalLink,
@@ -38,6 +39,7 @@ export default function CompanyDetailPage() {
   const [isEditingInfo, setIsEditingInfo] = useState(false);
   const [companyData, setCompanyData] = useState({
     name: "",
+    phone: "",
     website: "",
     address: "",
     city: "",
@@ -70,6 +72,7 @@ export default function CompanyDetailPage() {
       setCompany(data);
       setCompanyData({
         name: data.name || "",
+        phone: data.phone || "",
         website: data.website || "",
         address: data.address || "",
         city: data.city || "",
@@ -128,6 +131,7 @@ export default function CompanyDetailPage() {
   const handleCancelEdit = () => {
     setCompanyData({
       name: company.name || "",
+      phone: company.phone || "",
       website: company.website || "",
       address: company.address || "",
       city: company.city || "",
@@ -261,6 +265,17 @@ export default function CompanyDetailPage() {
 
               {!isEditingInfo ? (
                 <div className="mt-6 space-y-4">
+                  {company.phone && (
+                    <div className="flex items-center gap-3">
+                      <Phone className="h-4 w-4 text-muted-foreground" />
+                      <a
+                        href={`tel:${company.phone}`}
+                        className="text-sm hover:underline"
+                      >
+                        {company.phone}
+                      </a>
+                    </div>
+                  )}
                   {company.website && (
                     <div className="flex items-center gap-3">
                       <Globe className="h-4 w-4 text-muted-foreground" />
@@ -302,6 +317,23 @@ export default function CompanyDetailPage() {
                       value={companyData.name}
                       onChange={(e) =>
                         setCompanyData({ ...companyData, name: e.target.value })
+                      }
+                      className="h-8 text-sm"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="phone" className="text-xs">
+                      Phone
+                    </Label>
+                    <Input
+                      id="phone"
+                      type="tel"
+                      value={companyData.phone}
+                      onChange={(e) =>
+                        setCompanyData({
+                          ...companyData,
+                          phone: e.target.value,
+                        })
                       }
                       className="h-8 text-sm"
                     />

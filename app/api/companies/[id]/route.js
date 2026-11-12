@@ -60,7 +60,7 @@ export async function PUT(request, { params }) {
 
     const { id } = await params
     const body = await request.json()
-    const { name, address, city, state, zip, website, is_donor } = body
+    const { name, address, city, state, zip, phone, website, is_donor } = body
 
     if (!name) {
       return NextResponse.json({ error: 'Name is required' }, { status: 400 })
@@ -71,9 +71,13 @@ export async function PUT(request, { params }) {
       return NextResponse.json({ error: 'Company not found' }, { status: 404 })
     }
 
+    // The detail page's info card doesn't send is_donor; leave it as it was
+    // rather than reading its absence as "not a donor".
+    const donor = is_donor === undefined ? existing.is_donor : is_donor ? 1 : 0
+
     await run(
-      `UPDATE companies SET name = ?, address = ?, city = ?, state = ?, zip = ?, website = ?, is_donor = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?`,
-      [name, address || null, city || null, state || null, zip || null, website || null, is_donor ? 1 : 0, id]
+      `UPDATE companies SET name = ?, address = ?, city = ?, state = ?, zip = ?, phone = ?, website = ?, is_donor = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?`,
+      [name, address || null, city || null, state || null, zip || null, phone || null, website || null, donor, id]
     )
 
     const company = await get('SELECT * FROM companies WHERE id = ?', [id])

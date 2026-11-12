@@ -19,14 +19,14 @@ export async function GET(request, { params }) {
     }
 
     const students = await all(`
-      SELECT p.id, p.first_name, p.last_name, p.email, p.phone
+      SELECT p.id, p.first_name, p.last_name, p.email, p.phone, p.instagram_handle, p.facebook_handle
       FROM people p
       JOIN group_students gs ON p.id = gs.person_id
       WHERE gs.group_id = ?
     `, [id])
 
     const parents = await all(`
-      SELECT p.id, p.first_name, p.last_name, p.email, p.phone
+      SELECT p.id, p.first_name, p.last_name, p.email, p.phone, p.instagram_handle, p.facebook_handle
       FROM people p
       JOIN group_parents gp ON p.id = gp.person_id
       WHERE gp.group_id = ?
@@ -37,7 +37,7 @@ export async function GET(request, { params }) {
     // other person is one of this group's parents.
     const links = await all(`
       SELECT DISTINCT gs.person_id AS student_id,
-             p.id, p.first_name, p.last_name, p.email, p.phone
+             p.id, p.first_name, p.last_name, p.email, p.phone, p.instagram_handle, p.facebook_handle
       FROM group_students gs
       JOIN family_relationships fr
         ON fr.person_id = gs.person_id OR fr.related_person_id = gs.person_id

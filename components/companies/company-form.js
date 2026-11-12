@@ -22,6 +22,7 @@ export function CompanyForm({ company, isEdit = false }) {
     city: company?.city || "",
     state: company?.state || "",
     zip: company?.zip || "",
+    phone: company?.phone || "",
     website: company?.website || "",
     is_donor: company?.is_donor || false,
   });
@@ -81,7 +82,18 @@ export function CompanyForm({ company, isEdit = false }) {
               required
             />
           </div>
-          <div className="space-y-2 md:col-span-2">
+          <div className="space-y-2">
+            <Label htmlFor="phone">Phone</Label>
+            <Input
+              id="phone"
+              type="tel"
+              value={formData.phone}
+              onChange={(e) =>
+                setFormData({ ...formData, phone: e.target.value })
+              }
+            />
+          </div>
+          <div className="space-y-2">
             <Label htmlFor="website">Website</Label>
             <Input
               id="website"

@@ -44,6 +44,7 @@ import {
   Pencil,
   Trash2,
   MapPin,
+  Phone,
   Users,
   Save,
   X,
@@ -61,6 +62,7 @@ export default function SchoolDetailPage() {
   const [isEditingInfo, setIsEditingInfo] = useState(false);
   const [schoolData, setSchoolData] = useState({
     name: "",
+    phone: "",
     address: "",
     city: "",
     state: "",
@@ -137,6 +139,7 @@ export default function SchoolDetailPage() {
       setSchool(data);
       setSchoolData({
         name: data.name || "",
+        phone: data.phone || "",
         address: data.address || "",
         city: data.city || "",
         state: data.state || "",
@@ -194,6 +197,7 @@ export default function SchoolDetailPage() {
   const handleCancelEdit = () => {
     setSchoolData({
       name: school.name || "",
+      phone: school.phone || "",
       address: school.address || "",
       city: school.city || "",
       state: school.state || "",
@@ -258,6 +262,12 @@ export default function SchoolDetailPage() {
 
   if (!school) return null;
 
+  // People who are only parents or students are reached through the school's
+  // groups, not listed here. Anyone with another role (a teacher who is also a
+  // parent) still shows. The add search checks the full list so hidden people
+  // can't be re-added.
+  const listedPeople = (school.people || []).filter((p) => !p.family_only);
+
   return (
     <div className="flex flex-col">
       <Header title={school.name}>
@@ -319,6 +329,17 @@ export default function SchoolDetailPage() {
 
               {!isEditingInfo ? (
                 <div className="mt-6 space-y-4">
+                  {school.phone && (
+                    <div className="flex items-center gap-3">
+                      <Phone className="h-4 w-4 text-muted-foreground" />
+                      <a
+                        href={`tel:${school.phone}`}
+                        className="text-sm hover:underline"
+                      >
+                        {school.phone}
+                      </a>
+                    </div>
+                  )}
                   {(school.address || school.city) && (
                     <div className="flex items-start gap-3">
                       <MapPin className="h-4 w-4 text-muted-foreground mt-0.5" />
@@ -346,6 +367,20 @@ export default function SchoolDetailPage() {
                       value={schoolData.name}
                       onChange={(e) =>
                         setSchoolData({ ...schoolData, name: e.target.value })
+                      }
+                      className="h-8 text-sm"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="phone" className="text-xs">
+                      Phone
+                    </Label>
+                    <Input
+                      id="phone"
+                      type="tel"
+                      value={schoolData.phone}
+                      onChange={(e) =>
+                        setSchoolData({ ...schoolData, phone: e.target.value })
                       }
                       className="h-8 text-sm"
                     />
@@ -460,13 +495,13 @@ export default function SchoolDetailPage() {
                     </div>
                   </div>
                 )}
-                {school.people?.length === 0 ? (
+                {listedPeople.length === 0 ? (
                   <p className="text-muted-foreground text-center py-4">
                     No people associated
                   </p>
                 ) : (
                   <div className="space-y-2">
-                    {school.people?.map((person) => (
+                    {listedPeople.map((person) => (
                       <div
                         key={person.id}
                         className="flex items-center justify-between p-3 border rounded-lg hover:bg-muted/50 transition-colors"

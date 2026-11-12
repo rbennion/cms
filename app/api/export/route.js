@@ -115,7 +115,7 @@ export async function GET(request) {
     } else if (entityType === "companies") {
       // Mirror the Companies list API (app/api/companies) filters.
       let query = `
-        SELECT id, name, address, city, state, zip, website, is_donor
+        SELECT id, name, address, city, state, zip, phone, website, is_donor
         FROM companies
         WHERE 1=1
       `;
@@ -140,13 +140,14 @@ export async function GET(request) {
         "city",
         "state",
         "zip",
+        "phone",
         "website",
         "is_donor",
       ];
     } else if (entityType === "schools") {
       // Mirror the Schools list API (app/api/schools) filters.
       let query = `
-        SELECT id, name, address, city, state, zip
+        SELECT id, name, address, city, state, zip, phone
         FROM schools
         WHERE 1=1
       `;
@@ -159,7 +160,7 @@ export async function GET(request) {
       query += " ORDER BY name";
 
       data = await all(query, params);
-      columns = ["id", "name", "address", "city", "state", "zip"];
+      columns = ["id", "name", "address", "city", "state", "zip", "phone"];
     } else if (entityType === "donations") {
       let query = `
         SELECT d.id, d.amount, d.date, d.note,

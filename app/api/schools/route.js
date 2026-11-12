@@ -41,15 +41,15 @@ export async function POST(request) {
     if (error) return error
 
     const body = await request.json()
-    const { name, address, city, state, zip } = body
+    const { name, address, city, state, zip, phone } = body
 
     if (!name) {
       return NextResponse.json({ error: 'Name is required' }, { status: 400 })
     }
 
     const result = await run(
-      'INSERT INTO schools (name, address, city, state, zip) VALUES (?, ?, ?, ?, ?)',
-      [name, address || null, city || null, state || null, zip || null]
+      'INSERT INTO schools (name, address, city, state, zip, phone) VALUES (?, ?, ?, ?, ?, ?)',
+      [name, address || null, city || null, state || null, zip || null, phone || null]
     )
 
     const school = await get('SELECT * FROM schools WHERE id = ?', [result.lastInsertRowid])

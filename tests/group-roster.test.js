@@ -65,6 +65,19 @@ describe("roster rows", () => {
     });
   });
 
+  it("carries each side's Instagram and Facebook handles", () => {
+    const [r] = buildRosterRows({
+      students: [{ ...amy, instagram_handle: "@amy", facebook_handle: "amy.stone" }],
+      links: [{ student_id: 1, ...mom, instagram_handle: "@jan" }],
+    });
+    expect(r).toMatchObject({
+      "Student Instagram": "@amy",
+      "Student Facebook": "amy.stone",
+      "Parent Instagram": "@jan",
+      "Parent Facebook": "",
+    });
+  });
+
   it("quotes values that would break a CSV row", () => {
     const csv = rosterToCsv(buildRosterRows({ students: [person(3, "Al", 'O"Neil, Jr', null, null)] }));
     const [header, line] = csv.split("\n");
@@ -81,9 +94,9 @@ describe("roster rows", () => {
 describe("GET /api/groups/[id]/roster", () => {
   let groupId;
 
-  const createPerson = async (last, email) => {
+  const createPerson = async (last, email, social = {}) => {
     const res = await people.POST(json("http://test/api/people", "POST", {
-      first_name: `${TEST_PREFIX}Ros`, last_name: last, email, phone: "555-0300",
+      first_name: `${TEST_PREFIX}Ros`, last_name: last, email, phone: "555-0300", ...social,
     }));
     return (await res.json()).id;
   };
@@ -97,7 +110,9 @@ describe("GET /api/groups/[id]/roster", () => {
     }));
     groupId = (await g.json()).id;
 
-    const kid = await createPerson("Kid", "zztest.kid@example.invalid");
+    const kid = await createPerson("Kid", "zztest.kid@example.invalid", {
+      instagram_handle: "@zzkid", facebook_handle: "zz.kid",
+    });
     const loner = await createPerson("Loner", "zztest.loner@example.invalid");
     // A parent sharing the student's email can no longer be created through
     // the app, but records from before that rule can, so insert one directly.
@@ -105,7 +120,9 @@ describe("GET /api/groups/[id]/roster", () => {
       "INSERT INTO people (first_name, last_name, email, phone) VALUES (?, ?, ?, ?) RETURNING id",
       [`${TEST_PREFIX}Ros`, "Mom", "zztest.kid@example.invalid", "555-0300"]
     );
-    const oldLink = await createPerson("OldLink", "zztest.oldlink@example.invalid");
+    const oldLink = await createPerson("OldLink", "zztest.oldlink@example.invalid", {
+      instagram_handle: "@zzoldlink",
+    });
     const stray = await createPerson("Stray", "zztest.stray@example.invalid");
 
     for (const s of [kid, loner]) {
@@ -132,9 +149,9 @@ describe("GET /api/groups/[id]/roster", () => {
     const body = lines.slice(1);
     expect(body).toHaveLength(4);
     expect(body[0]).toMatch(/^ZZTestRos Kid,.*,ZZTestRos Mom,.*Student and parent share the same email$/);
-    expect(body[1]).toMatch(/^ZZTestRos Kid,.*,ZZTestRos OldLink,.*,$/);
+    expect(body[1]).toMatch(/^ZZTestRos Kid,.*,@zzkid,zz\.kid,ZZTestRos OldLink,.*,@zzoldlink,,$/);
     expect(body[2]).toMatch(/^ZZTestRos Loner,.*No parent listed$/);
-    expect(body[3]).toMatch(/^,,,ZZTestRos Stray,.*Parent not linked to a student in this group$/);
+    expect(body[3]).toMatch(/^,,,,,ZZTestRos Stray,.*Parent not linked to a student in this group$/);
   });
 
   it("returns 404 for a missing group", async () => {

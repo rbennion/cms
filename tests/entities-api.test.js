@@ -64,6 +64,36 @@ describe("companies", () => {
     const after = await (await company.GET(new Request("http://test/x"), params(companyId))).json();
     expect(after.name).toContain("Renamed");
   });
+
+  it("stores a phone number, and an edit can change or clear it", async () => {
+    const created = await companies.POST(json("http://test/api/companies", "POST", {
+      name: `${TEST_PREFIX} Phone Co`, phone: "555-0400",
+    }));
+    const id = (await created.json()).id;
+    const read = async () => (await (await company.GET(new Request("http://test/x"), params(id))).json()).phone;
+    expect(await read()).toBe("555-0400");
+
+    await company.PUT(json("http://test/x", "PUT", { name: `${TEST_PREFIX} Phone Co`, phone: "555-0401" }), params(id));
+    expect(await read()).toBe("555-0401");
+
+    await company.PUT(json("http://test/x", "PUT", { name: `${TEST_PREFIX} Phone Co`, phone: "" }), params(id));
+    expect(await read()).toBeNull();
+  });
+
+  it("keeps donor status when an edit does not mention it", async () => {
+    // The detail page's info card saves name, phone and address only.
+    const created = await companies.POST(json("http://test/api/companies", "POST", {
+      name: `${TEST_PREFIX} Donor Co`, is_donor: true,
+    }));
+    const id = (await created.json()).id;
+    const donor = async () => (await (await company.GET(new Request("http://test/x"), params(id))).json()).is_donor;
+
+    await company.PUT(json("http://test/x", "PUT", { name: `${TEST_PREFIX} Donor Co`, phone: "555-0402" }), params(id));
+    expect(await donor()).toBe(1);
+
+    await company.PUT(json("http://test/x", "PUT", { name: `${TEST_PREFIX} Donor Co`, is_donor: false }), params(id));
+    expect(await donor()).toBe(0);
+  });
 });
 
 describe("schools", () => {
@@ -95,6 +125,74 @@ describe("schools", () => {
       params(schoolId)
     );
     expect(res.status).toBeLessThan(300);
+  });
+
+  it("stores a phone number, and an edit can change or clear it", async () => {
+    const created = await schools.POST(json("http://test/api/schools", "POST", {
+      name: `${TEST_PREFIX} Phone Academy`, phone: "555-0500",
+    }));
+    const id = (await created.json()).id;
+    const read = async () => (await (await school.GET(new Request("http://test/x"), params(id))).json()).phone;
+    expect(await read()).toBe("555-0500");
+
+    await school.PUT(json("http://test/x", "PUT", { name: `${TEST_PREFIX} Phone Academy`, phone: "555-0501" }), params(id));
+    expect(await read()).toBe("555-0501");
+
+    await school.PUT(json("http://test/x", "PUT", { name: `${TEST_PREFIX} Phone Academy` }), params(id));
+    expect(await read()).toBeNull();
+  });
+});
+
+describe("a school's people are flagged when they are only parents or students", () => {
+  // The school page hides flagged people from its People list.
+  it("flags parents and students, but not anyone with another role or a group to lead", async () => {
+    const { run, get } = await import("@/lib/db");
+    const sch = await schools.POST(json("http://test/api/schools", "POST", { name: `${TEST_PREFIX} Flag School` }));
+    const sid = (await sch.json()).id;
+    const g = await groups.POST(json("http://test/api/groups", "POST", {
+      school_id: sid, name: `${TEST_PREFIX} Flag Group`, gender: "Boys", year: 2031,
+    }));
+    const gid = (await g.json()).id;
+
+    const make = async (last) => {
+      const res = await people.POST(json("http://test/api/people", "POST", {
+        first_name: `${TEST_PREFIX}Flag`, last_name: last,
+      }));
+      const id = (await res.json()).id;
+      await schoolPeople.POST(json("http://test/x", "POST", { person_id: id }), params(sid));
+      return id;
+    };
+    const teacher = await make("Teacher");
+    const roleParent = await make("RoleParent");
+    const groupStudent = await make("GroupStudent");
+    const groupParent = await make("GroupParent");
+    const teacherParent = await make("TeacherParent");
+    const leaderParent = await make("LeaderParent");
+
+    const roleId = async (name) => (await get("SELECT id FROM roles WHERE LOWER(TRIM(name)) = ?", [name])).id;
+    const giveRole = (personId, id) => run("INSERT INTO person_roles (person_id, role_id) VALUES (?, ?)", [personId, id]);
+    const parentRole = await roleId("parent");
+    const teacherRole = await roleId("teacher");
+
+    await giveRole(teacher, teacherRole);
+    await giveRole(roleParent, parentRole);
+    await students.POST(json("http://test/x", "POST", { person_id: groupStudent }), params(gid));
+    await parents.POST(json("http://test/x", "POST", { person_id: groupParent }), params(gid));
+    await giveRole(teacherParent, teacherRole);
+    await giveRole(teacherParent, parentRole);
+    await parents.POST(json("http://test/x", "POST", { person_id: leaderParent }), params(gid));
+    await run("INSERT INTO group_leaders (group_id, person_id) VALUES (?, ?)", [gid, leaderParent]);
+
+    const body = await (await school.GET(new Request("http://test/x"), params(sid))).json();
+    const flag = Object.fromEntries(body.people.map((p) => [p.id, p.family_only]));
+    expect(flag).toEqual({
+      [teacher]: false,
+      [roleParent]: true,
+      [groupStudent]: true,
+      [groupParent]: true,
+      [teacherParent]: false,
+      [leaderParent]: false,
+    });
   });
 });
 

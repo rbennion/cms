@@ -16,8 +16,21 @@ export async function GET(request, { params }) {
       return NextResponse.json({ error: "School not found" }, { status: 404 });
     }
 
+    // family_only: connected to Fight Club only as a parent or student (that
+    // role, or a student/parent in a group), with no other role and leading no
+    // group. The school page hides these from its People list, so a teacher who
+    // is also a parent still shows.
     const people = await all(
-      `SELECT p.id, p.first_name, p.last_name, p.email, p.phone, p.title, p.address, p.city, p.state, p.zip
+      `SELECT p.id, p.first_name, p.last_name, p.email, p.phone, p.title, p.address, p.city, p.state, p.zip,
+              ((EXISTS (SELECT 1 FROM person_roles pr JOIN roles r ON r.id = pr.role_id
+                         WHERE pr.person_id = p.id AND LOWER(TRIM(r.name)) IN ('parent', 'student'))
+                OR EXISTS (SELECT 1 FROM group_students gs WHERE gs.person_id = p.id)
+                OR EXISTS (SELECT 1 FROM group_parents gp WHERE gp.person_id = p.id))
+               AND NOT EXISTS (SELECT 1 FROM person_roles pr JOIN roles r ON r.id = pr.role_id
+                                WHERE pr.person_id = p.id AND LOWER(TRIM(r.name)) NOT IN ('parent', 'student'))
+               AND NOT EXISTS (SELECT 1 FROM group_leaders gl WHERE gl.person_id = p.id)
+               AND NOT EXISTS (SELECT 1 FROM groups g WHERE g.primary_leader_id = p.id)
+              ) AS family_only
        FROM people p
        JOIN person_schools ps ON p.id = ps.person_id
        WHERE ps.school_id = ?
@@ -49,20 +62,21 @@ export async function PUT(request, { params }) {
 
     const { id } = await params;
     const body = await request.json();
-    const { name, address, city, state, zip } = body;
+    const { name, address, city, state, zip, phone } = body;
 
     if (!name) {
       return NextResponse.json({ error: "Name is required" }, { status: 400 });
     }
 
     await run(
-      "UPDATE schools SET name = ?, address = ?, city = ?, state = ?, zip = ? WHERE id = ?",
+      "UPDATE schools SET name = ?, address = ?, city = ?, state = ?, zip = ?, phone = ? WHERE id = ?",
       [
         name,
         address || null,
         city || null,
         state || null,
         zip || null,
+        phone || null,
         id,
       ]
     );
